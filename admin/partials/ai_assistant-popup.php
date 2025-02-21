@@ -3,7 +3,7 @@
     <div class="custom-field-popup-content">
         <div class="close_n_drag">
             <span id="drag-popup-handle" class="drag-handle dashicons dashicons-move"></span>
-            <span id="close-custom-field-popup">&times;</span>
+            <span id="close-custom-field-popup" class="dashicons dashicons-no-alt"></span>
             <!-- Drag Icon -->
         </div>
 
@@ -61,21 +61,28 @@
         </div>
         <div id="create_acf" class="custom-tab-content">
             <div class="custom-toolbar">
-                <button class="custom-toolbar-btn" data-shortcode="tab">Tab</button>
+
                 <button class="custom-toolbar-btn" data-shortcode="text">Text</button>
-                <button class="custom-toolbar-btn" data-shortcode="email">Email</button>
-                <button class="custom-toolbar-btn" data-shortcode="url">URL</button>
-                <button class="custom-toolbar-btn" data-shortcode="tel">Tel</button>
-                <button class="custom-toolbar-btn" data-shortcode="number">Number</button>
-                <button class="custom-toolbar-btn" data-shortcode="date">Date</button>
                 <button class="custom-toolbar-btn" data-shortcode="textarea">Text Area</button>
-                <button class="custom-toolbar-btn" data-shortcode="dropdown">Drop-down Menu</button>
-                <button class="custom-toolbar-btn" data-shortcode="checkbox">Checkboxes</button>
-                <button class="custom-toolbar-btn" data-shortcode="radio">Radio Buttons</button>
-                <button class="custom-toolbar-btn" data-shortcode="acceptance">Acceptance</button>
-                <button class="custom-toolbar-btn" data-shortcode="quiz">Quiz</button>
-                <button class="custom-toolbar-btn" data-shortcode="file">File</button>
-                <button class="custom-toolbar-btn" data-shortcode="submit">Submit</button>
+                <button class="custom-toolbar-btn" data-shortcode="image">Image</button>
+                <button class="custom-toolbar-btn" data-shortcode="wysiwyg">WYSIWYG</button>
+                <button class="custom-toolbar-btn" data-shortcode="number">Number</button>
+                <button class="custom-toolbar-btn" data-shortcode="url">URL</button>
+                <button class="custom-toolbar-btn" data-shortcode="date">Date</button>
+                <button class="custom-toolbar-btn" data-shortcode="email">Email</button>
+                <button class="custom-toolbar-btn" data-shortcode="tel">Tel</button>
+
+                <div class="d-full">
+                    <button class="custom-toolbar-btn" data-shortcode="tab">Tab</button>
+                    <button class="custom-toolbar-btn" data-shortcode="checkbox">Checkboxes</button>
+                    <button class="custom-toolbar-btn" data-shortcode="radio">Radio Buttons</button><br>
+
+                </div>
+                <div class="d-full">
+                    <button class="custom-toolbar-btn" data-shortcode="options">Options</button>
+                </div>
+
+
             </div>
 
             <div class="custom-editor">

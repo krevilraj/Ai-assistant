@@ -21,8 +21,7 @@
 /* Close Button */
 #close-custom-field-popup {
     cursor: pointer;
-    font-size: 31px;
-    font-weight: bold;
+    font-size: 24px;
 }
 .close_n_drag{
     display: flex;
@@ -33,7 +32,6 @@
 .drag-handle {
     cursor: grab;
     font-size: 18px;
-    font-weight: bold;
     padding: 2px 5px;
     border-radius: 3px;
 }
@@ -227,4 +225,10 @@
 
 .custom-alert.danger {
     background-color: #F44336; /* Red for danger */
+}
+.d-flex{
+    display:flex;
+}
+.d-full{
+    width:100%;
 }
