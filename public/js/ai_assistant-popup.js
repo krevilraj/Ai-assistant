@@ -1,4 +1,12 @@
 jQuery(document).ready(function ($) {
+    // Ensure the popup has position fixed
+    $("#custom-field-popup").css({
+        position: "fixed",
+        left: "50%",
+        top: "50%",
+        transform: "translate(-50%, -50%)"
+    });
+
     // Open popup
     $(".open-custom-field-popup").on("click", function (event) {
         event.preventDefault();
@@ -19,24 +27,42 @@ jQuery(document).ready(function ($) {
         $("#" + $(this).data("tab")).addClass("active");
     });
 
-    // Dragging functionality (only from drag handle)
+    // Dragging functionality (fully fixed with scroll support)
     let isDragging = false;
     let offsetX, offsetY;
 
     $("#drag-popup-handle").on("mousedown", function (event) {
         isDragging = true;
-        offsetX = event.clientX - $("#custom-field-popup").offset().left;
-        offsetY = event.clientY - $("#custom-field-popup").offset().top;
-        $("#drag-popup-handle").css("cursor", "grabbing");
 
+        // Calculate offset relative to popup's current position (viewport)
+        const popupPosition = $("#custom-field-popup").position();
+        offsetX = event.clientX - popupPosition.left;
+        offsetY = event.clientY - popupPosition.top;
+
+        $("#drag-popup-handle").css("cursor", "grabbing");
         event.preventDefault(); // Prevents text selection while dragging
     });
 
     $(document).on("mousemove", function (event) {
         if (!isDragging) return;
+
+        // Calculate new position relative to the viewport
+        let newLeft = event.clientX - offsetX;
+        let newTop = event.clientY - offsetY;
+
+        // Ensure popup stays within viewport boundaries
+        const windowWidth = $(window).width();
+        const windowHeight = $(window).height();
+        const popupWidth = $("#custom-field-popup").outerWidth();
+        const popupHeight = $("#custom-field-popup").outerHeight();
+
+        newLeft = Math.max(0, Math.min(windowWidth - popupWidth, newLeft));
+        newTop = Math.max(0, Math.min(windowHeight - popupHeight, newTop));
+
         $("#custom-field-popup").css({
-            left: event.clientX - offsetX + "px",
-            top: event.clientY - offsetY + "px"
+            left: newLeft + "px",
+            top: newTop + "px",
+            transform: "none" // Reset transform during dragging
         });
     });
 
@@ -45,6 +71,10 @@ jQuery(document).ready(function ($) {
         $("#drag-popup-handle").css("cursor", "grab");
     });
 });
+
+
+
+
 
 jQuery(document).ready(function ($) {
     $(".custom-toolbar-btn").on("click", async function () {
@@ -246,6 +276,59 @@ jQuery(document).ready(function ($) {
 
 
 jQuery(document).ready(function ($) {
+    function displayGroupedFields(fields) {
+        const container = $(".acf-field-container");
+        container.empty();
+
+        let tabWrapper = null;
+
+        fields.forEach((field) => {
+            if (field.type === "tab") {
+                if (tabWrapper) {
+                    container.append(tabWrapper);
+                }
+                tabWrapper = $('<div class="tab-wrapper"></div>');
+                tabWrapper.append(`<label>${field.label}</label>`);
+            } else {
+                if (!tabWrapper) {
+                    tabWrapper = $('<div class="tab-wrapper"></div>');
+                    tabWrapper.append(`<label>Default</label>`);
+                }
+                tabWrapper.append(
+                    `<button class="acf-field-btn" data-slug="${field.slug}" data-type="${field.type}">${field.label}</button>`
+                ); // ✅ Added data-type
+            }
+        });
+
+        if (tabWrapper) {
+            container.append(tabWrapper);
+        }
+    }
+
+    function showAlert(message, type) {
+        // Remove existing alerts
+        $(".custom-alert").remove();
+
+        // Create alert element
+        var alertBox = $('<div class="custom-alert ' + type + '">' + message + '</div>');
+
+        // Append to body
+        $("body").append(alertBox);
+
+        // Slide in
+        setTimeout(function () {
+            alertBox.css("right", "20px");
+        }, 100); // Slight delay for smooth transition
+
+        // Slide out after 3 seconds
+        setTimeout(function () {
+            alertBox.css("right", "-400px");
+            setTimeout(function () {
+                alertBox.remove(); // Remove from DOM after slide out
+            }, 500); // Wait for transition to finish
+        }, 3000); // Stay for 3 seconds
+    }
+
     $("#get_custom_fields").on("click", function () {
         var pageUrl = $("#url").val().trim();
 
@@ -279,36 +362,75 @@ jQuery(document).ready(function ($) {
         });
     });
 
-    function displayGroupedFields(fields) {
-        const container = $(".acf-field-container");
-        container.empty();
+    // change the default homepage with page id
+    $("#change_setting").on("click", function () {
+        var pageId = $("#page_id").val().trim();
+        var submitbtn = $(this).find(".icon-wrapper");
 
-        let tabWrapper = null;
-
-        fields.forEach((field) => {
-            if (field.type === "tab") {
-                if (tabWrapper) {
-                    container.append(tabWrapper);
-                }
-                tabWrapper = $('<div class="tab-wrapper"></div>');
-                tabWrapper.append(`<label>${field.label}</label>`);
-            } else {
-                if (!tabWrapper) {
-                    tabWrapper = $('<div class="tab-wrapper"></div>');
-                    tabWrapper.append(`<label>Default</label>`);
-                }
-                tabWrapper.append(
-                    `<button class="acf-field-btn" data-slug="${field.slug}" data-type="${field.type}">${field.label}</button>`
-                ); // ✅ Added data-type
-            }
-        });
-
-        if (tabWrapper) {
-            container.append(tabWrapper);
+        if (!pageId) {
+            showAlert("❌ Please enter a valid Page ID.", "danger");
+            return;
         }
-    }
+
+        $.ajax({
+            url: ajax_object.ajax_url,
+            type: "POST",
+            data: {
+                action: "set_homepage",
+                page_id: pageId,
+            },
+            success: function (response) {
+                if (response.success) {
+                    submitbtn.addClass("anim");
+                    setTimeout(function () {
+                        submitbtn.removeClass("anim");
+                    }, 1200); // Same as animation duration
+                    showAlert("✅ Homepage updated successfully!", "success");
+                } else {
+                    showAlert("❌ Failed to update homepage: " + response.data, "danger");
+                }
+            },
+            error: function () {
+                showAlert("❌ Error occurred while updating homepage.", "danger");
+            },
+        });
+    });
+
+    // reset the permalink select the post name default
+    $("#reset_permalink").on("click", function () {
+        if (confirm("Are you sure you want to reset permalinks to 'Post name'?")) {
+            $.ajax({
+                url: ajax_object.ajax_url, // Ensure ajax_object is localized in WordPress
+                type: "POST",
+                data: {
+                    action: "reset_permalink"
+                },
+                success: function (response) {
+                    if (response.success) {
+                        alert(response.data); // Success message
+                        location.reload();    // Reload to reflect new permalinks
+                    } else {
+                        showAlert("❌ Failed to reset permalinks.", "danger");
+                    }
+                },
+                error: function () {
+                    showAlert("❌ AJAX error occurred.", "danger");
+                }
+            });
+        }
+    });
+
+    $(".open__child").on("click",function (){
+        $(this).siblings(".action__setting").slideDown();
+    });
+
 
 });
+
+
+
+
+
 
 
 

@@ -67,7 +67,9 @@ class AI_Assistant {
 
 
         add_action('wp_ajax_get_custom_fields_from_url', [$this, 'get_custom_fields_from_url']);
+        add_action('wp_ajax_set_homepage', [$this, 'set_homepage']);
 
+        add_action('wp_ajax_reset_permalink', [$this, 'reset_permalink_structure']);
 
     }
 
@@ -102,7 +104,6 @@ class AI_Assistant {
 
         $this->loader = new AI_Assistant_Loader();
     }
-
 
     private function set_locale() {
         $plugin_i18n = new AI_Assistant_i18n();
@@ -143,7 +144,6 @@ class AI_Assistant {
         }
     }
 
-
     function get_acf_location_data() {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized");
@@ -165,7 +165,6 @@ class AI_Assistant {
             'taxonomies' => array_values($taxonomies),
         ]);
     }
-
 
     public function fetch_acf_location_data() {
         if (!current_user_can('manage_options')) {
@@ -207,7 +206,6 @@ class AI_Assistant {
             'taxonomies'     => array_values($taxonomies),
         ]);
     }
-
 
     public function get_custom_fields_from_url() {
         if (!isset($_POST['page_url'])) {
@@ -255,7 +253,44 @@ class AI_Assistant {
         wp_send_json_success($fields_data);
     }
 
+    public function set_homepage() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("Unauthorized access.");
+            return;
+        }
 
+        if (!isset($_POST['page_id']) || !is_numeric($_POST['page_id'])) {
+            wp_send_json_error("Invalid page ID.");
+            return;
+        }
+
+        $page_id = intval($_POST['page_id']);
+
+        if (get_post_status($page_id) !== 'publish') {
+            wp_send_json_error("Page not found or not published.");
+            return;
+        }
+
+        update_option('show_on_front', 'page');
+        update_option('page_on_front', $page_id);
+
+        wp_send_json_success("Homepage set successfully.");
+    }
+
+    public function reset_permalink_structure() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("Unauthorized access.");
+            return;
+        }
+
+        // ✅ Update permalink structure to 'post name'
+        update_option('permalink_structure', '/%postname%/');
+
+        // ✅ Flush rewrite rules to apply changes immediately
+        flush_rewrite_rules();
+
+        wp_send_json_success("Permalink structure reset to 'Post name' and flushed.");
+    }
 
 
 
