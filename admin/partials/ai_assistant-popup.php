@@ -79,7 +79,7 @@
 
                 </div>
                 <div class="d-full">
-                    <button class="custom-toolbar-btn" data-shortcode="options">Options</button>
+                    <button class="" data-shortcode="options">Options</button>
                 </div>
 
 

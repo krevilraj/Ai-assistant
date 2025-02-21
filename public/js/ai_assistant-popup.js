@@ -1,3 +1,4 @@
+//grab and move the popup
 jQuery(document).ready(function ($) {
     // Ensure the popup has position fixed
     $("#custom-field-popup").css({
@@ -75,19 +76,20 @@ jQuery(document).ready(function ($) {
 
 
 
-
+// on button click for ACF put value in textarea
 jQuery(document).ready(function ($) {
+    let lastCursorPos = 0;
+
+    // Update the textarea with custom behavior for checkbox and radio buttons
     $(".custom-toolbar-btn").on("click", async function () {
         var shortcodeType = $(this).attr("data-shortcode");
-        var textarea = $("#custom-form-editor")[0]; // Get textarea element
+        var textarea = $("#custom-form-editor")[0];
         var selectedText = "";
 
-        // Get selected text from the whole page
         if (window.getSelection) {
             selectedText = window.getSelection().toString().trim();
         }
 
-        // If no text is selected, try clipboard
         if (!selectedText && navigator.clipboard && navigator.clipboard.readText) {
             try {
                 selectedText = await navigator.clipboard.readText();
@@ -96,23 +98,140 @@ jQuery(document).ready(function ($) {
             }
         }
 
-        // Ensure shortcode format
-        var shortcode = `[${shortcodeType} name=""${selectedText ? ` value="${selectedText}"` : ""}]`;
+        var shortcode = "";
 
-        // Get current textarea content
+        if (shortcodeType === "checkbox" || shortcodeType === "radio") {
+            shortcode = `[${shortcodeType} name="" option=""]`;
+        } else {
+            shortcode = `[${shortcodeType} name=""${selectedText ? ` value="${selectedText}"` : ""}]`;
+        }
+
         var currentContent = textarea.value.trim();
-
-        // Append the new shortcode at the end with a new line
         if (currentContent.length > 0) {
             textarea.value = currentContent + "\n" + shortcode;
         } else {
-            textarea.value = shortcode; // If textarea is empty, just add the shortcode
+            textarea.value = shortcode;
         }
 
-        // Move cursor **inside** `name=""` of the new shortcode
-        var newCursorPos = textarea.value.lastIndexOf(`name=""`) + 6;
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        lastCursorPos = textarea.value.lastIndexOf(`name=""`) + 6;
+        textarea.setSelectionRange(lastCursorPos, lastCursorPos);
         textarea.focus();
+    });
+
+    // Handle option button click
+    $("button[data-shortcode='options']").on("click", function () {
+        var textarea = $("#custom-form-editor")[0];
+        var content = textarea.value;
+        var cursorPos = textarea.selectionStart;
+
+        var selectedOption = window.getSelection().toString().trim();
+
+        if (selectedOption) {
+            var optionAttrIndex = content.lastIndexOf('option="', cursorPos);
+
+            if (optionAttrIndex !== -1) {
+                var quoteEndIndex = content.indexOf('"', optionAttrIndex + 8);
+                if (quoteEndIndex !== -1) {
+                    var existingOptions = content.substring(optionAttrIndex + 8, quoteEndIndex).trim();
+                    if (existingOptions) {
+                        // Append with "|" only if there is existing text
+                        textarea.value =
+                            content.slice(0, quoteEndIndex) + "|" + selectedOption + content.slice(quoteEndIndex);
+                    } else {
+                        // Directly add selected text if empty
+                        textarea.value =
+                            content.slice(0, quoteEndIndex) + selectedOption + content.slice(quoteEndIndex);
+                    }
+                    cursorPos = quoteEndIndex + selectedOption.length + 1;
+                } else {
+                    // If no closing quote found, fallback
+                    textarea.value = content.slice(0, cursorPos) + selectedOption + content.slice(cursorPos);
+                    cursorPos += selectedOption.length;
+                }
+
+                textarea.setSelectionRange(cursorPos, cursorPos);
+                textarea.focus();
+            }
+        }
+    });
+
+    // Update last cursor position on keypress or click inside textarea
+    $("#custom-form-editor").on("click keyup", function () {
+        lastCursorPos = this.selectionStart;
+    });
+
+    // Handle JSON creation button
+    $("#create-json-btn").on("click", function () {
+        var textareaContent = $("#custom-form-editor").val().trim();
+        if (!textareaContent) {
+            alert("No content available to create JSON.");
+            return;
+        }
+
+        var fields = [];
+        var lines = textareaContent.split("\n");
+
+        lines.forEach(function (line) {
+            var match = line.match(/\[([a-zA-Z0-9_-]+)\s+name="([^"]+)"(?:\s+value="([^"]*)")?\]/);
+            if (match) {
+                var type = match[1];
+                var name = match[2];
+                var value = match[3] || "";
+
+                var slug = name.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+
+                fields.push({
+                    key: "field_" + slug,
+                    label: name,
+                    name: slug,
+                    type: type,
+                    default_value: value
+                });
+            }
+        });
+
+        if (fields.length === 0) {
+            alert("No valid fields found.");
+            return;
+        }
+
+        // Get the selected location rule
+        var selectedParam = $(".acf-location-param").val();
+        var selectedValue = $(".acf-location-value").val();
+
+        if (!selectedParam || !selectedValue) {
+            alert("Please select location conditions.");
+            return;
+        }
+
+        var locationData = [[{ param: selectedParam, operator: "==", value: selectedValue }]];
+
+        var jsonData = {
+            key: "group_" + Date.now(),
+            title: "Custom Fields",
+            fields: fields,
+            location: locationData, // Now including the location
+            style: "default",
+            label_placement: "top",
+            instruction_placement: "label",
+            hide_on_screen: []
+        };
+
+        $.ajax({
+            url: ajax_object.ajax_url,
+            type: "POST",
+            data: {
+                action: "save_acf_json",
+                json_data: JSON.stringify(jsonData),
+                location_data: JSON.stringify(locationData) // Send location rules
+            },
+            success: function (response) {
+                alert(response.data);
+            },
+            error: function () {
+                alert("Failed to save JSON.");
+            }
+        });
     });
 });
 
@@ -199,79 +318,7 @@ jQuery(document).ready(function ($) {
         populateValueDropdown($(this).val());
     });
 
-    // Handle JSON creation button
-    $("#create-json-btn").on("click", function () {
-        var textareaContent = $("#custom-form-editor").val().trim();
-        if (!textareaContent) {
-            alert("No content available to create JSON.");
-            return;
-        }
 
-        var fields = [];
-        var lines = textareaContent.split("\n");
-
-        lines.forEach(function (line) {
-            var match = line.match(/\[([a-zA-Z0-9_-]+)\s+name="([^"]+)"(?:\s+value="([^"]*)")?\]/);
-            if (match) {
-                var type = match[1];
-                var name = match[2];
-                var value = match[3] || "";
-
-                var slug = name.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-
-                fields.push({
-                    key: "field_" + slug,
-                    label: name,
-                    name: slug,
-                    type: type,
-                    default_value: value
-                });
-            }
-        });
-
-        if (fields.length === 0) {
-            alert("No valid fields found.");
-            return;
-        }
-
-        // Get the selected location rule
-        var selectedParam = $(".acf-location-param").val();
-        var selectedValue = $(".acf-location-value").val();
-
-        if (!selectedParam || !selectedValue) {
-            alert("Please select location conditions.");
-            return;
-        }
-
-        var locationData = [[{ param: selectedParam, operator: "==", value: selectedValue }]];
-
-        var jsonData = {
-            key: "group_" + Date.now(),
-            title: "Custom Fields",
-            fields: fields,
-            location: locationData, // Now including the location
-            style: "default",
-            label_placement: "top",
-            instruction_placement: "label",
-            hide_on_screen: []
-        };
-
-        $.ajax({
-            url: ajax_object.ajax_url,
-            type: "POST",
-            data: {
-                action: "save_acf_json",
-                json_data: JSON.stringify(jsonData),
-                location_data: JSON.stringify(locationData) // Send location rules
-            },
-            success: function (response) {
-                alert(response.data);
-            },
-            error: function () {
-                alert("Failed to save JSON.");
-            }
-        });
-    });
 });
 
 
