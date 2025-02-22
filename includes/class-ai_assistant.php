@@ -27,13 +27,15 @@
  * @subpackage AI_Assistant/includes
  * @author     Your Name <email@example.com>
  */
-class AI_Assistant {
+class AI_Assistant
+{
 
     protected $loader;
     protected $plugin_name;
     protected $version;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->plugin_name = 'ai_assistant';
         $this->version = '1.0.0';
 
@@ -43,15 +45,13 @@ class AI_Assistant {
         $this->define_public_hooks();
     }
 
-    private function define_admin_hooks() {
-        $plugin_admin = new AI_Assistant_Admin( $this->get_plugin_name(), $this->get_version() );
+    private function define_admin_hooks()
+    {
+        $plugin_admin = new AI_Assistant_Admin($this->get_plugin_name(), $this->get_version());
 
-        $this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
-        $this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
-
-        $this->loader->add_action( 'admin_menu', $plugin_admin, 'add_admin_menu' ); // Add admin menu
-
-
+        $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_styles');
+        $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
+        $this->loader->add_action('admin_menu', $plugin_admin, 'add_admin_menu'); // Add admin menu
 
         add_action('admin_bar_menu', array($plugin_admin, 'add_custom_field_link_to_admin_bar'), 100);
         add_action('wp_footer', array($plugin_admin, 'add_custom_field_popup'));
@@ -64,53 +64,57 @@ class AI_Assistant {
         // Register AJAX action
         add_action('wp_ajax_fetch_acf_location_data', [$this, 'fetch_acf_location_data']);
         add_action('wp_ajax_nopriv_fetch_acf_location_data', [$this, 'fetch_acf_location_data']); // Allow non-logged-in users if needed
-
-
         add_action('wp_ajax_get_custom_fields_from_url', [$this, 'get_custom_fields_from_url']);
         add_action('wp_ajax_set_homepage', [$this, 'set_homepage']);
-
         add_action('wp_ajax_reset_permalink', [$this, 'reset_permalink_structure']);
-
-    }
-
-    private function define_public_hooks() {
-        $plugin_public = new AI_Assistant_Public( $this->get_plugin_name(), $this->get_version() );
-
-        $this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
-        $this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
-
-
+        $this->loader->add_action('wp_ajax_ai_assistant_create_theme', $this, 'ai_assistant_create_theme');
+        add_action('wp_ajax_ai_assistant_create_theme', [$this, 'ai_assistant_create_theme']);
+        add_action('wp_ajax_ai_assistant_get_theme_details', [$this, 'ai_assistant_get_theme_details']);
+        add_action('wp_ajax_ai_assistant_create_page_and_template', [$this, 'ai_assistant_create_page_and_template']);
+        add_action('wp_ajax_ai_assistant_create_menu', [$this, 'ai_assistant_create_menu']);
 
 
     }
 
-    public function run() {
+    private function define_public_hooks()
+    {
+        $plugin_public = new AI_Assistant_Public($this->get_plugin_name(), $this->get_version());
+
+        $this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_styles');
+        $this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_scripts');
+
+
+    }
+
+    public function run(){
         $this->loader->run();
     }
 
-    public function get_plugin_name() {
+    public function get_plugin_name(){
         return $this->plugin_name;
     }
 
-    public function get_version() {
+    public function get_version(){
         return $this->version;
     }
 
-    private function load_dependencies() {
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-ai_assistant-loader.php';
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-ai_assistant-i18n.php'; // Ensure this is included
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-ai_assistant-admin.php';
-        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-ai_assistant-public.php';
+    private function load_dependencies()
+    {
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-ai_assistant-loader.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-ai_assistant-i18n.php'; // Ensure this is included
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class-ai_assistant-admin.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'public/class-ai_assistant-public.php';
 
         $this->loader = new AI_Assistant_Loader();
     }
 
-    private function set_locale() {
+    private function set_locale()
+    {
         $plugin_i18n = new AI_Assistant_i18n();
-        $this->loader->add_action( 'plugins_loaded', $plugin_i18n, 'load_plugin_textdomain' );
+        $this->loader->add_action('plugins_loaded', $plugin_i18n, 'load_plugin_textdomain');
     }
 
-    public function save_acf_json() {
+    public function save_acf_json(){
         if (!isset($_POST['json_data']) || !isset($_POST['location_data'])) {
             wp_send_json_error("Invalid request.");
             return;
@@ -144,7 +148,7 @@ class AI_Assistant {
         }
     }
 
-    function get_acf_location_data() {
+    function get_acf_location_data(){
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized");
         }
@@ -166,7 +170,8 @@ class AI_Assistant {
         ]);
     }
 
-    public function fetch_acf_location_data() {
+    public function fetch_acf_location_data()
+    {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized access.");
             return;
@@ -177,9 +182,9 @@ class AI_Assistant {
 
         // Get pages
         $pages = get_posts([
-            'post_type'      => 'page',
+            'post_type' => 'page',
             'posts_per_page' => -1,
-            'post_status'    => 'publish',
+            'post_status' => 'publish',
         ]);
         $page_list = [];
         foreach ($pages as $page) {
@@ -191,7 +196,7 @@ class AI_Assistant {
         $templates = wp_get_theme()->get_page_templates();
         foreach ($templates as $template_file => $template_name) {
             $page_templates[] = [
-                'file'  => $template_file,  // Correct file name (e.g., template-home.php)
+                'file' => $template_file,  // Correct file name (e.g., template-home.php)
                 'label' => $template_name   // Correct human-readable label (e.g., "Home Template")
             ];
         }
@@ -200,14 +205,15 @@ class AI_Assistant {
         $taxonomies = get_taxonomies(['public' => true], 'names');
 
         wp_send_json_success([
-            'post_types'     => array_values($post_types),
-            'pages'          => $page_list,
+            'post_types' => array_values($post_types),
+            'pages' => $page_list,
             'page_templates' => $page_templates,
-            'taxonomies'     => array_values($taxonomies),
+            'taxonomies' => array_values($taxonomies),
         ]);
     }
 
-    public function get_custom_fields_from_url() {
+    public function get_custom_fields_from_url()
+    {
         if (!isset($_POST['page_url'])) {
             wp_send_json_error("URL not provided.");
             return;
@@ -233,8 +239,8 @@ class AI_Assistant {
                     foreach ($fields as $field) {
                         $fields_data[] = [
                             'label' => $field['label'],
-                            'slug'  => $field['name'],
-                            'type'  => $field['type'], // ✅ Pass 'type' for JS usage
+                            'slug' => $field['name'],
+                            'type' => $field['type'], // ✅ Pass 'type' for JS usage
                         ];
                     }
                 }
@@ -244,8 +250,8 @@ class AI_Assistant {
             foreach ($meta_fields as $key => $value) {
                 $fields_data[] = [
                     'label' => $key,
-                    'slug'  => $key,
-                    'type'  => 'text' // ✅ Default type
+                    'slug' => $key,
+                    'type' => 'text' // ✅ Default type
                 ];
             }
         }
@@ -253,7 +259,7 @@ class AI_Assistant {
         wp_send_json_success($fields_data);
     }
 
-    public function set_homepage() {
+    public function set_homepage(){
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized access.");
             return;
@@ -277,7 +283,7 @@ class AI_Assistant {
         wp_send_json_success("Homepage set successfully.");
     }
 
-    public function reset_permalink_structure() {
+    public function reset_permalink_structure(){
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized access.");
             return;
@@ -292,9 +298,202 @@ class AI_Assistant {
         wp_send_json_success("Permalink structure reset to 'Post name' and flushed.");
     }
 
+    public function ai_assistant_create_theme()
+    {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("Unauthorized access.");
+        }
 
+        $theme_name = sanitize_text_field($_POST['theme_name']);
+        $theme_uri = esc_url_raw($_POST['theme_uri']);
+        $author = sanitize_text_field($_POST['author']);
+        $author_uri = esc_url_raw($_POST['author_uri']);
+        $text_domain = sanitize_text_field($_POST['text_domain']);
 
+        $theme_slug = sanitize_title($theme_name); // Theme slug for folder name
+        $theme_dir = get_theme_root() . '/' . $theme_slug;
+
+        if (file_exists($theme_dir)) {
+            wp_send_json_error("Theme already exists.");
+        }
+
+        if (!mkdir($theme_dir, 0755, true)) {
+            wp_send_json_error("Failed to create theme directory.");
+        }
+
+        // ✅ Copy files from 'theme_template' folder
+        $plugin_template_dir = plugin_dir_path(__FILE__) . '../theme_template/';
+        $files_to_copy = ['header.php', 'footer.php', 'functions.php', 'template-home.php'];
+
+        foreach ($files_to_copy as $file) {
+            $source = $plugin_template_dir . $file;
+            $destination = $theme_dir . '/' . $file;
+
+            if (!copy($source, $destination)) {
+                wp_send_json_error("Failed to copy file: {$file}");
+            }
+        }
+
+        // ✅ Append custom function to functions.php
+        $functions_php = $theme_dir . '/functions.php';
+        $append_content = <<<EOT
+
+// ✅ Custom menu configuration by {$theme_name}
+function {$text_domain}_config() {
+
+    // This theme uses wp_nav_menu() in two locations.
+    register_nav_menus(
+        array(
+            '{$text_domain}_main_menu'   => '{$theme_name} Main Menu',
+            '{$text_domain}_footer_menu' => '{$theme_name} Footer Menu',
+        )
+    );
+
+}
+
+add_action('after_setup_theme', '{$text_domain}_config', 0);
+
+EOT;
+
+        if (file_put_contents($functions_php, $append_content, FILE_APPEND | LOCK_EX) === false) {
+            wp_send_json_error("Failed to append custom menu configuration in functions.php.");
+        }
+
+        // ✅ Create index.php
+        file_put_contents($theme_dir . '/index.php', "<?php\n// Silence is golden.\n");
+
+        // ✅ Create blank screenshot.png
+        $image = imagecreatetruecolor(1200, 900);
+        $white = imagecolorallocate($image, 255, 255, 255);
+        imagefill($image, 0, 0, $white);
+        imagepng($image, $theme_dir . '/screenshot.png');
+        imagedestroy($image);
+
+        // ✅ Create style.css
+        $style_content = "/*
+Theme Name: {$theme_name}
+Theme URI: {$theme_uri}
+Author: {$author}
+Author URI: {$author_uri}
+Version: 1.0
+Text-domain: {$text_domain}
+License: GNU General Public License v2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
+Tags: e-commerce, custom-menu, custom-logo, featured-images, footer-widgets, theme-options, translation-ready, blog, right-sidebar, sticky-post, threaded-comments
+*/";
+        file_put_contents($theme_dir . '/style.css', $style_content);
+
+        // ✅ Save values in the database
+        update_option('ai_assistant_theme_name', $theme_name);
+        update_option('ai_assistant_theme_uri', $theme_uri);
+        update_option('ai_assistant_author', $author);
+        update_option('ai_assistant_author_uri', $author_uri);
+        update_option('ai_assistant_text_domain', $text_domain);
+
+        // 🚀 ✅ Activate the theme
+        switch_theme($theme_slug);
+
+        wp_send_json_success("Theme '{$theme_name}' created, files copied, menus configured, and activated successfully.");
+    }
+
+    // ✅ Fetch theme details for display
+    public function ai_assistant_get_theme_details() {
+        wp_send_json_success([
+            'theme_name' => get_option('ai_assistant_theme_name', ''),
+            'theme_uri' => get_option('ai_assistant_theme_uri', ''),
+            'author' => get_option('ai_assistant_author', ''),
+            'author_uri' => get_option('ai_assistant_author_uri', ''),
+            'text_domain' => get_option('ai_assistant_text_domain', '')
+        ]);
+    }
+
+    public function ai_assistant_create_page_and_template() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("Unauthorized access.");
+        }
+
+        $page_name = sanitize_text_field($_POST['page_name']);
+        $create_template = isset($_POST['create_template']) ? boolval($_POST['create_template']) : false;
+        $theme_dir = get_stylesheet_directory();
+        $template_slug = sanitize_title($page_name) . '-template.php';
+
+        // ✅ Create template file if checkbox is checked
+        if ($create_template) {
+            $template_content = "<?php
+/*
+Template Name: {$page_name}
+*/
+get_header(); ?>
+
+<!-- Page Content -->
+<h1>{$page_name}</h1>
+
+<?php get_footer(); ?>";
+
+            $template_path = $theme_dir . '/' . $template_slug;
+            if (file_put_contents($template_path, $template_content) === false) {
+                wp_send_json_error("Failed to create template file.");
+            }
+        }
+
+        // ✅ Create WordPress page
+        $page_id = wp_insert_post([
+            'post_title'   => $page_name,
+            'post_content' => '',
+            'post_status'  => 'publish',
+            'post_type'    => 'page',
+            'page_template'=> $create_template ? $template_slug : ''
+        ]);
+
+        if (is_wp_error($page_id) || !$page_id) {
+            wp_send_json_error("Failed to create page.");
+        }
+
+        $message = "Page '{$page_name}' created successfully.";
+        $message .= $create_template ? " Template attached: {$template_slug}" : "";
+
+        wp_send_json_success($message);
+    }
+
+    //create menu and respond menu id
+    public function ai_assistant_create_menu() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("Unauthorized access.");
+        }
+
+        $menu_name = sanitize_text_field($_POST['menu_name']);
+        $menu_exists = wp_get_nav_menu_object($menu_name);
+
+        if (!$menu_exists) {
+            $menu_id = wp_create_nav_menu($menu_name);
+
+            if (is_wp_error($menu_id)) {
+                wp_send_json_error("Failed to create menu.");
+            }
+
+            wp_send_json_success(['menu_id' => $menu_id]);
+        } else {
+            wp_send_json_error("Menu already exists.");
+        }
+    }
 
 
 }
+
+if (!function_exists('ai_assistant_render_spark_button')) {
+    /**
+     * Render the spark effect button globally with dynamic data-action.
+     *
+     * @param string $action_value The value for the data-action attribute.
+     * @since 1.0.0
+     */
+    function ai_assistant_render_spark_button($action_value = '')
+    {
+        do_action('ai_assistant_before_spark_button');
+        include plugin_dir_path(dirname(__FILE__)) . 'admin/partials/ai-assistant-button.php';
+        do_action('ai_assistant_after_spark_button');
+    }
+}
+
+
 

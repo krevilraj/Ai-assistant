@@ -232,3 +232,39 @@
 .d-full{
     width:100%;
 }
+
+.open__child{
+    position:relative;
+}
+
+
+
+span.open__child::after {
+    content: '';
+    top: 4px;
+    right: -15px;
+    display: inline-block;
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background-image: url('../../admin/image/down.svg');
+    background-size: contain;
+    background-repeat: no-repeat;
+    margin-left: 5px;
+    transition: transform 0.3s ease;
+}
+
+.open__child.active::after {
+    transform: rotate(180deg);
+}
+.btn__status{
+    display: inline-block;
+    margin-top: 2px;
+}
+.change_setting{
+    margin-left:10px;
+}
+.action__setting label{
+    display: block;
+    margin-top: 6px;
+}

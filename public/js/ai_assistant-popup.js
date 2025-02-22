@@ -336,6 +336,33 @@ jQuery(document).ready(function ($) {
 
 });
 
+function showAlert(message, type) {
+    // Remove existing alerts
+    jQuery(".custom-alert").remove();
+
+    // Create alert element
+    var alertBox = jQuery('<div class="custom-alert ' + type + '">' + message + '</div>');
+
+    // Append to body
+    jQuery("body").append(alertBox);
+
+    // Slide in
+    setTimeout(function () {
+        alertBox.css("right", "20px");
+    }, 100); // Slight delay for smooth transition
+
+    // Slide out after 3 seconds
+    setTimeout(function () {
+        alertBox.css("right", "-400px");
+        setTimeout(function () {
+            alertBox.remove(); // Remove from DOM after slide out
+        }, 500); // Wait for transition to finish
+    }, 3000); // Stay for 3 seconds
+
+    setTimeout(function () {
+        jQuery(".icon-wrapper").removeClass('anim');
+    }, 2000);
+}
 
 jQuery(document).ready(function ($) {
     function displayGroupedFields(fields) {
@@ -365,30 +392,6 @@ jQuery(document).ready(function ($) {
         if (tabWrapper) {
             container.append(tabWrapper);
         }
-    }
-
-    function showAlert(message, type) {
-        // Remove existing alerts
-        $(".custom-alert").remove();
-
-        // Create alert element
-        var alertBox = $('<div class="custom-alert ' + type + '">' + message + '</div>');
-
-        // Append to body
-        $("body").append(alertBox);
-
-        // Slide in
-        setTimeout(function () {
-            alertBox.css("right", "20px");
-        }, 100); // Slight delay for smooth transition
-
-        // Slide out after 3 seconds
-        setTimeout(function () {
-            alertBox.css("right", "-400px");
-            setTimeout(function () {
-                alertBox.remove(); // Remove from DOM after slide out
-            }, 500); // Wait for transition to finish
-        }, 3000); // Stay for 3 seconds
     }
 
     $("#get_custom_fields").on("click", function () {
@@ -424,39 +427,7 @@ jQuery(document).ready(function ($) {
         });
     });
 
-    // change the default homepage with page id
-    $("#change_setting").on("click", function () {
-        var pageId = $("#page_id").val().trim();
-        var submitbtn = $(this).find(".icon-wrapper");
 
-        if (!pageId) {
-            showAlert("❌ Please enter a valid Page ID.", "danger");
-            return;
-        }
-
-        $.ajax({
-            url: ajax_object.ajax_url,
-            type: "POST",
-            data: {
-                action: "set_homepage",
-                page_id: pageId,
-            },
-            success: function (response) {
-                if (response.success) {
-                    submitbtn.addClass("anim");
-                    setTimeout(function () {
-                        submitbtn.removeClass("anim");
-                    }, 1200); // Same as animation duration
-                    showAlert("✅ Homepage updated successfully!", "success");
-                } else {
-                    showAlert("❌ Failed to update homepage: " + response.data, "danger");
-                }
-            },
-            error: function () {
-                showAlert("❌ Error occurred while updating homepage.", "danger");
-            },
-        });
-    });
 
     // reset the permalink select the post name default
     $("#reset_permalink").on("click", function () {
@@ -482,12 +453,224 @@ jQuery(document).ready(function ($) {
         }
     });
 
-    $(".open__child").on("click",function (){
-        $(this).siblings(".action__setting").slideDown();
+    $(".open__child").on("click", function () {
+        var actionSetting = $(this).siblings(".action__setting");
+        $(this).toggleClass("active"); // Toggle 'active' class for rotation
+
+        if (actionSetting.is(":visible")) {
+            actionSetting.slideUp();
+        } else {
+            actionSetting.slideDown();
+        }
+    });
+});
+
+jQuery(document).ready(function ($) {
+    // ✅ Populate input fields with saved values
+    function populateThemeDetails() {
+        $.ajax({
+            url: ajax_object.ajax_url,
+            type: "POST",
+            data: { action: "ai_assistant_get_theme_details" },
+            success: function (response) {
+                if (response.success) {
+                    const themeSection = $("li.create_theme");
+
+                    themeSection.find('input[name="theme_name"]').val(response.data.theme_name);
+                    themeSection.find('input[name="theme_uri"]').val(response.data.theme_uri);
+                    themeSection.find('input[name="author"]').val(response.data.author);
+                    themeSection.find('input[name="author_uri"]').val(response.data.author_uri);
+                    themeSection.find('input[name="text_domain"]').val(response.data.text_domain);
+                }
+            },
+            error: function () {
+                showAlert("❌ Failed to load theme details.", "danger");
+            }
+        });
+    }
+
+
+    populateThemeDetails(); // ✅ Load on page load
+    // ✅ Create theme and save data
+    $(document).on("click", "#change_setting", function () {
+        var _this = $(this);
+        var parentLi = _this.closest('li'); // ✅ Get parent <li> first
+        //change default homepage
+        if(_this.data('action')==="change_default_page"){
+
+            var pageId = parentLi.find('[name="page_id"]').val().trim();
+            var submitbtn = $(this).find(".icon-wrapper");
+
+            if (!pageId) {
+                showAlert("❌ Please enter a valid Page ID.", "danger");
+                return;
+            }
+
+            $.ajax({
+                url: ajax_object.ajax_url,
+                type: "POST",
+                data: {
+                    action: "set_homepage",
+                    page_id: pageId,
+                },
+                success: function (response) {
+                    if (response.success) {
+                        submitbtn.addClass("anim");
+                        setTimeout(function () {
+                            submitbtn.removeClass("anim");
+                        }, 1200); // Same as animation duration
+                        showAlert("✅ Homepage updated successfully!", "success");
+                    } else {
+                        showAlert("❌ Failed to update homepage: " + response.data, "danger");
+                    }
+                },
+                error: function () {
+                    showAlert("❌ Error occurred while updating homepage.", "danger");
+                },
+            });
+        }
+        //create theme folder and copy basic file
+        else if(_this.data('action')==="create_theme"){
+            var statusElement = $('<span class="btn__status"><em>wait...</em></span>');
+            _this.find('.icon-wrapper').append(statusElement);
+
+
+            // Get values from inputs by 'name' attribute inside the parent <li>
+            var themeName = parentLi.find('[name="theme_name"]').val().trim();
+            var themeUri = parentLi.find('[name="theme_uri"]').val().trim();
+            var author = parentLi.find('[name="author"]').val().trim();
+            var authorUri = parentLi.find('[name="author_uri"]').val().trim();
+            var textDomain = parentLi.find('[name="text_domain"]').val().trim();
+
+
+            if (!themeName) {
+                showAlert("❌ Theme Name is required.", "danger");
+                statusElement.remove(); // ✅ Hide status if validation fails
+                return;
+            }
+
+            $.ajax({
+                url: ajax_object.ajax_url,
+                type: "POST",
+                data: {
+                    action: "ai_assistant_create_theme",
+                    theme_name: themeName,
+                    theme_uri: themeUri,
+                    author: author,
+                    author_uri: authorUri,
+                    text_domain: textDomain
+                },
+                success: function (response) {
+                    statusElement.remove(); // ✅ Hide status after success or failure
+
+                    if (response.success) {
+                        console.log("Server Response:", response); // 🚀 Show full response in console
+                        showAlert(`✅ ${response.data}`, "success"); // 🚀 Display server message in alert
+                        populateThemeDetails(); // Refresh with updated details
+                        _this.find('.icon-wrapper').addClass("anim");
+
+                        setTimeout(function () {
+                            _this.find('.icon-wrapper').removeClass("anim");
+                        }, 1200); // ✅ Remove animation after some time
+                    } else {
+                        console.log("Server Error:", response); // 🚀 Show error details
+                        showAlert(`❌ ${response.data}`, "danger"); // 🚀 Display server error in alert
+                    }
+                },
+                error: function (xhr, status, error) {
+                    statusElement.remove(); // ✅ Hide status on error
+                    console.log("AJAX Error Details:", xhr.responseText); // 🚀 Log detailed error
+                    showAlert(`❌ AJAX error occurred: ${error}`, "danger");
+                }
+            });
+        }
+        //create template file
+        else if (_this.data('action') === "create_page_and_template_file") {
+            var parentLi = _this.closest('li');
+            var pagedom = parentLi.find('[name="page_name"]');
+            var pageName = parentLi.find('[name="page_name"]').val().trim();
+            var createTemplate = parentLi.find('[name="create_page_template"]').is(':checked') ? 1 : 0;
+
+            if (!pageName) {
+                showAlert("❌ Page name is required.", "danger");
+                return;
+            }
+
+            var statusElement = $('<span class="btn__status"><em>wait...</em></span>');
+            _this.find('.icon-wrapper').append(statusElement);
+
+            $.ajax({
+                url: ajax_object.ajax_url,
+                type: "POST",
+                data: {
+                    action: "ai_assistant_create_page_and_template",
+                    page_name: pageName,
+                    create_template: createTemplate
+                },
+                success: function (response) {
+                    pagedom.val("");
+                    statusElement.remove();
+                    if (response.success) {
+                        showAlert(`✅ ${response.data}`, "success");
+                        _this.find('.icon-wrapper').addClass("anim");
+                        setTimeout(function () {
+                            _this.find('.icon-wrapper').removeClass("anim");
+                        }, 1200);
+                    } else {
+                        showAlert(`❌ ${response.data}`, "danger");
+                    }
+                },
+                error: function (xhr, status, error) {
+                    pagedom.val("");
+                    statusElement.remove();
+                    console.log("AJAX Error:", xhr.responseText);
+                    showAlert(`❌ AJAX error occurred: ${error}`, "danger");
+                }
+            });
+        }
+        //create menu
+        if (_this.data('action') === "create_menu") {
+            var parentLi = _this.closest('li');
+            var menuName = parentLi.find('input[name="menu_name"]').val().trim();
+
+            if (!menuName) {
+                showAlert("❌ Menu Name is required.", "danger");
+                return;
+            }
+
+            var statusElement = $('<span class="btn__status"><em>wait...</em></span>');
+            _this.find('.icon-wrapper').append(statusElement);
+
+            $.ajax({
+                url: ajax_object.ajax_url,
+                type: "POST",
+                data: {
+                    action: "ai_assistant_create_menu",
+                    menu_name: menuName
+                },
+                success: function (response) {
+                    if (response.success) {
+                        statusElement.remove();
+                        _this.find('.icon-wrapper').addClass("anim");
+                        showAlert(`✅ Menu '${menuName}' created successfully! Redirecting...`, "success");
+                        setTimeout(function () {
+                            window.location.href = `/wp-admin/nav-menus.php?action=edit&menu=${response.data.menu_id}`;
+                        }, 1500); // Redirect after 1.5 seconds
+                    } else {
+                        showAlert(`❌ ${response.data}`, "danger");
+                    }
+                },
+                error: function () {
+                    showAlert("❌ AJAX error occurred while creating menu.", "danger");
+                }
+            });
+        }
+
+
     });
 
-
 });
+
 
 
 

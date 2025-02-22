@@ -12,6 +12,7 @@
             <button class="custom-tab active" data-tab="basic_setting">Basic Setting</button>
             <button class="custom-tab " data-tab="create_acf">Create ACF</button>
             <button class="custom-tab" data-tab="apply_acf">Apply ACF</button>
+            <button class="custom-tab" data-tab="static_to_dynamic">Static to Dynamic</button>
             <button class="custom-tab" data-tab="additional_settings">Additional Settings</button>
         </div>
 
@@ -21,40 +22,20 @@
             <ul class="action__list">
                 <li><span class="open__child">Change page to homepage</span>
                     <div class="action__setting">
-                        <input type="text" id="page_id" placeholder="Page id">
-                        <button id="change_setting">
-                            <div class="icon-wrapper">
-                                <span class="icon"><span class="dashicons dashicons-thumbs-up flip-vertical"></span></span>
-                                <div class="border"><span></span></div>
-                                <div class="satellite">
-                                    <span></span>
-                                    <span></span>
-                                    <span></span>
-                                    <span></span>
-                                    <span></span>
-                                    <span></span>
-                                </div>
-                            </div>
-                        </button>
+                        <input type="text" name="page_id" placeholder="Page id">
+                        <?php ai_assistant_render_spark_button('change_default_page'); ?>
+                    </div>
+                </li>
+                <li><span class="open__child">Create Page</span>
+                    <div class="action__setting">
+                        <input type="text" name="page_name" placeholder="Page name"><br>
+                        <input type="checkbox" name="create_page_template"> Create page template
+                        <?php ai_assistant_render_spark_button('create_page_and_template_file'); ?>
                     </div>
                 </li>
                 <li><span id="reset_permalink">Reset permalink</span></li>
                 <li><span id="reset_permalink">Blog pages show at most</span></li>
-                <li>
-                    <div class="icon-wrapper">
-                        <span class="icon"><span class="dashicons dashicons-thumbs-up flip-vertical"></span></span>
-                        <div class="border"><span></span></div>
-                        <div class="satellite">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                        </div>
-                    </div>
 
-                </li>
 
             </ul>
 
@@ -74,7 +55,8 @@
                 <div class="d-full">
                     <button class="custom-toolbar-btn" data-shortcode="tab">Tab</button>
                     <button class="custom-toolbar-btn" data-shortcode="checkbox">Checkboxes</button>
-                    <button class="custom-toolbar-btn" data-shortcode="radio">Radio Buttons</button><br>
+                    <button class="custom-toolbar-btn" data-shortcode="radio">Radio Buttons</button>
+                    <br>
 
                 </div>
                 <div class="d-full">
@@ -126,8 +108,51 @@
 
             </div>
         </div>
+        <div id="static_to_dynamic" class="custom-tab-content">
+            <h2>Static to Dynamic Process</h2>
+            <ul class="action__list">
+                <li class="create_theme"><span class="open__child">Create theme</span>
+                    <div class="action__setting">
+                        <input type="text" name="theme_name" placeholder="Theme Name">
+                        <input type="text" name="theme_uri" placeholder="Theme URI">
+                        <input type="text" name="author" placeholder="Author">
+                        <input type="text" name="author_uri" placeholder="Author URI">
+                        <input type="text" name="text_domain" placeholder="Text domain(use underscore if space)">
+
+                        <?php ai_assistant_render_spark_button('create_theme'); ?>
+
+                    </div>
+                </li>
+                <li>
+                    <span class="open__child">Create Page</span>
+                    <div class="action__setting">
+                        <input type="text" name="page_name"
+                               placeholder="Page name"><?php ai_assistant_render_spark_button('create_page_and_template_file'); ?>
+                        <label>
+                            <input type="checkbox" name="create_page_template" checked> Create page template
+                        </label>
+
+                    </div>
+                </li>
+                <li>
+                    <span class="open__child">Create Menu</span>
+                    <div class="action__setting">
+                        <input type="text" name="menu_name"
+                               placeholder="Menu name"><?php ai_assistant_render_spark_button('create_menu'); ?>
+
+
+                    </div>
+                </li>
+
+
+            </ul>
+        </div>
         <div id="additional_settings" class="custom-tab-content">
             <textarea id="settings-editor" placeholder="Enter Additional Settings..."></textarea>
         </div>
     </div>
 </div>
+
+
+
+
