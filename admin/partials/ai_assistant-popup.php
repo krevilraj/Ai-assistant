@@ -68,7 +68,6 @@
                 <button class="custom-toolbar-btn" data-shortcode="wysiwyg">WYSIWYG</button>
                 <button class="custom-toolbar-btn" data-shortcode="number">Number</button>
                 <button class="custom-toolbar-btn" data-shortcode="url">URL</button>
-                <button class="custom-toolbar-btn" data-shortcode="date">Date</button>
                 <button class="custom-toolbar-btn" data-shortcode="email">Email</button>
                 <button class="custom-toolbar-btn" data-shortcode="tel">Tel</button>
 

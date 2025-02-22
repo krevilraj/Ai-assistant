@@ -172,21 +172,35 @@ jQuery(document).ready(function ($) {
         var lines = textareaContent.split("\n");
 
         lines.forEach(function (line) {
-            var match = line.match(/\[([a-zA-Z0-9_-]+)\s+name="([^"]+)"(?:\s+value="([^"]*)")?\]/);
+            var match = line.match(/\[([a-zA-Z0-9_-]+)\s+name="([^"]+)"(?:\s+value="([^"]*)")?(?:\s+option="([^"]*)")?\]/);
             if (match) {
                 var type = match[1];
                 var name = match[2];
                 var value = match[3] || "";
+                var optionsRaw = match[4] || "";
 
                 var slug = name.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
 
-                fields.push({
+                var field = {
                     key: "field_" + slug,
                     label: name,
                     name: slug,
                     type: type,
                     default_value: value
-                });
+                };
+
+                // Handle options for checkbox and radio
+                if ((type === "checkbox" || type === "radio") && optionsRaw) {
+                    field.choices = optionsRaw.split("|").reduce(function (acc, option) {
+                        var trimmedOption = option.trim();
+                        if (trimmedOption) {
+                            acc[trimmedOption] = trimmedOption;
+                        }
+                        return acc;
+                    }, {});
+                }
+
+                fields.push(field);
             }
         });
 
@@ -210,7 +224,7 @@ jQuery(document).ready(function ($) {
             key: "group_" + Date.now(),
             title: "Custom Fields",
             fields: fields,
-            location: locationData, // Now including the location
+            location: locationData,
             style: "default",
             label_placement: "top",
             instruction_placement: "label",
@@ -223,7 +237,7 @@ jQuery(document).ready(function ($) {
             data: {
                 action: "save_acf_json",
                 json_data: JSON.stringify(jsonData),
-                location_data: JSON.stringify(locationData) // Send location rules
+                location_data: JSON.stringify(locationData)
             },
             success: function (response) {
                 alert(response.data);
@@ -233,6 +247,7 @@ jQuery(document).ready(function ($) {
             }
         });
     });
+
 });
 
 
