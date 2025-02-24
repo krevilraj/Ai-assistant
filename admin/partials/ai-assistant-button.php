@@ -1,4 +1,4 @@
-<button id="change_setting" class="change_setting" data-action="<?php echo esc_attr($action_value); ?>">
+<button  class="change_setting" data-action="<?php echo esc_attr($action_value); ?>">
     <div class="icon-wrapper">
                 <span class="icon">
                     <span class="dashicons dashicons-thumbs-up flip-vertical"></span>

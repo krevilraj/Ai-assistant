@@ -134,6 +134,25 @@
 
                     </div>
                 </li>
+
+                <li>
+                    <span class="open__child">Correct Header</span>
+                    <div class="action__setting">
+                        <textarea name="correct_header" id="" cols="30" rows="10"></textarea>
+
+                        <?php ai_assistant_render_spark_button('correct_header'); ?>
+
+
+                    </div>
+                </li>
+                <li>
+                    <span class="open__child">Correct Footer</span>
+                    <div class="action__setting">
+                        <textarea name="correct_footer" id="" cols="30" rows="10"></textarea>
+                        <?php ai_assistant_render_spark_button('correct_footer'); ?>
+                    </div>
+                </li>
+
                 <li>
                     <span class="open__child">Create Menu</span>
                     <div class="action__setting">
@@ -143,6 +162,8 @@
 
                     </div>
                 </li>
+
+
 
 
             </ul>

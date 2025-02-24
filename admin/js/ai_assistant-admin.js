@@ -49,3 +49,52 @@ document.addEventListener('DOMContentLoaded', function () {
 		});
 	});
 });
+
+
+
+jQuery(document).ready(function ($) {
+	// ✅ Toggle folders based on 'open' class
+	$(document).on('click', '.folder', function (e) {
+		e.stopPropagation();
+		const nested = $(this).children('.nested');
+		if ($(this).hasClass('open')) {
+			// 🔒 If open, slide up and remove 'open' class
+			nested.slideUp('fast');
+			$(this).removeClass('open');
+		} else {
+			// 🔓 If not open, slide down and add 'open' class
+			nested.slideDown('fast');
+			$(this).addClass('open');
+		}
+	});
+
+	// ✅ On page load, expand active file's parents
+	const activeFile = $('.active-file');
+	activeFile.parents('.nested').show();
+	activeFile.parents('.folder').addClass('open');
+
+
+	$('.postbox-header').on('click', function () {
+		const $postbox = $(this).closest('.postbox');
+
+		if ($postbox.hasClass('closed')) {
+			// If 'closed' class exists, remove it and slide down
+			$postbox.removeClass('closed');
+			$postbox.find('.inside').slideDown('fast');
+			$(this).find('.dashicons')
+				.removeClass('dashicons-arrow-down')
+				.addClass('dashicons-arrow-up');
+		} else {
+			// If 'closed' class does not exist, add it and slide up
+			$postbox.addClass('closed');
+			$postbox.find('.inside').slideUp('fast');
+			$(this).find('.dashicons')
+				.removeClass('dashicons-arrow-up')
+				.addClass('dashicons-arrow-down');
+		}
+	});
+
+});
+
+
+

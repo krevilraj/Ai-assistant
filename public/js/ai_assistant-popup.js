@@ -74,8 +74,6 @@ jQuery(document).ready(function ($) {
 });
 
 
-
-
 // on button click for ACF put value in textarea
 jQuery(document).ready(function ($) {
     let lastCursorPos = 0;
@@ -218,7 +216,7 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        var locationData = [[{ param: selectedParam, operator: "==", value: selectedValue }]];
+        var locationData = [[{param: selectedParam, operator: "==", value: selectedValue}]];
 
         var jsonData = {
             key: "group_" + Date.now(),
@@ -282,7 +280,7 @@ jQuery(document).ready(function ($) {
         $.ajax({
             url: ajax_object.ajax_url,
             type: "POST",
-            data: { action: "fetch_acf_location_data" },
+            data: {action: "fetch_acf_location_data"},
             success: function (response) {
                 if (response.success) {
                     postTypes = response.data.post_types;
@@ -428,7 +426,6 @@ jQuery(document).ready(function ($) {
     });
 
 
-
     // reset the permalink select the post name default
     $("#reset_permalink").on("click", function () {
         if (confirm("Are you sure you want to reset permalinks to 'Post name'?")) {
@@ -471,7 +468,7 @@ jQuery(document).ready(function ($) {
         $.ajax({
             url: ajax_object.ajax_url,
             type: "POST",
-            data: { action: "ai_assistant_get_theme_details" },
+            data: {action: "ai_assistant_get_theme_details"},
             success: function (response) {
                 if (response.success) {
                     const themeSection = $("li.create_theme");
@@ -490,13 +487,42 @@ jQuery(document).ready(function ($) {
     }
 
 
+
     populateThemeDetails(); // ✅ Load on page load
+
+
+    let selectedTextBeforeClick = "";
+    let selectionStartIndex = 0;
+    let selectionEndIndex = 0;
+
+// 🌟 Track the text selection inside the textarea
+    document.getElementById('menu-editor').addEventListener('mouseup', function () {
+        selectionStartIndex = this.selectionStart;
+        selectionEndIndex = this.selectionEnd;
+        selectedTextBeforeClick = this.value.substring(selectionStartIndex, selectionEndIndex);
+        console.log("🔍 Selected text:", selectedTextBeforeClick);
+    });
+
+// 🌟 Replace the selected text after AJAX response
+    function replaceSelectedTextInTextarea(newText) {
+        const textarea = document.getElementById('menu-editor');
+        const currentContent = textarea.value;
+
+        const updatedContent = currentContent.substring(0, selectionStartIndex) +
+            newText +
+            currentContent.substring(selectionEndIndex);
+
+        textarea.value = updatedContent;
+        textarea.focus();
+        console.log("✅ Text replaced successfully!");
+    }
+
     // ✅ Create theme and save data
-    $(document).on("click", "#change_setting", function () {
+    $(document).on("click", ".change_setting", function () {
         var _this = $(this);
         var parentLi = _this.closest('li'); // ✅ Get parent <li> first
         //change default homepage
-        if(_this.data('action')==="change_default_page"){
+        if (_this.data('action') === "change_default_page") {
 
             var pageId = parentLi.find('[name="page_id"]').val().trim();
             var submitbtn = $(this).find(".icon-wrapper");
@@ -530,7 +556,7 @@ jQuery(document).ready(function ($) {
             });
         }
         //create theme folder and copy basic file
-        else if(_this.data('action')==="create_theme"){
+        else if (_this.data('action') === "create_theme") {
             var statusElement = $('<span class="btn__status"><em>wait...</em></span>');
             _this.find('.icon-wrapper').append(statusElement);
 
@@ -629,7 +655,7 @@ jQuery(document).ready(function ($) {
             });
         }
         //create menu
-        if (_this.data('action') === "create_menu") {
+        else if (_this.data('action') === "create_menu") {
             var parentLi = _this.closest('li');
             var menuName = parentLi.find('input[name="menu_name"]').val().trim();
 
@@ -665,6 +691,116 @@ jQuery(document).ready(function ($) {
                 }
             });
         }
+        //correct header
+        else if (_this.data('action') === "correct_header") {
+            var parentLi = _this.closest('li');
+            var headerContent = parentLi.find('textarea[name="correct_header"]').val().trim();
+
+            if (!headerContent) {
+                showAlert("❌ Header content is required.", "danger");
+                return;
+            }
+            var statusElement = $('<span class="btn__status"><em>wait...</em></span>');
+            _this.find('.icon-wrapper').append(statusElement);
+            $.ajax({
+                url: ajax_object.ajax_url,
+                type: "POST",
+                data: {
+                    action: "ai_assistant_correct_header",
+                    header_content: headerContent
+                },
+                success: function (response) {
+                    if (response.success) {
+                        statusElement.remove();
+                        _this.find('.icon-wrapper').addClass("anim");
+                        showAlert(`✅ Header processed and styles enqueued successfully!`, "success");
+                    } else {
+                        showAlert(`❌ ${response.data}`, "danger");
+                    }
+                },
+                error: function () {
+                    showAlert("❌ AJAX error occurred while processing header.", "danger");
+                }
+            });
+        }
+        //correct footer
+        else if (_this.data('action') === "correct_footer") {
+            var parentLi = _this.closest('li');
+            var footerContent = parentLi.find('textarea[name="correct_footer"]').val().trim();
+
+            if (!footerContent) {
+                showAlert("❌ Footer content cannot be empty.", "danger");
+                return;
+            }
+            var statusElement = $('<span class="btn__status"><em>wait...</em></span>');
+            _this.find('.icon-wrapper').append(statusElement);
+            $.ajax({
+                url: ajax_object.ajax_url,
+                type: "POST",
+                data: {
+                    action: "ai_assistant_correct_footer",
+                    footer_content: footerContent
+                },
+                success: function (response) {
+                    statusElement.remove();
+                    _this.find('.icon-wrapper').addClass("anim");
+                    if (response.success) {
+                        showAlert("✅ Footer processed and scripts enqueued successfully!", "success");
+                    } else {
+                        showAlert(`❌ ${response.data}`, "danger");
+                    }
+                },
+                error: function () {
+                    showAlert("❌ AJAX error occurred while processing footer.", "danger");
+                }
+            });
+        }
+        //correct menu
+        else if (_this.data('action') === "correct_menu") {
+            const menuName = parentLi.find('[name="menu__name"]').val().trim();
+            const editorContent = $("#menu-editor").val().trim();
+
+            if (!menuName) {
+                showAlert("❌ Please select a menu.", "danger");
+                return;
+            }
+
+            if (!selectedTextBeforeClick) {
+                showAlert("❌ Please select the menu HTML in the textarea before clicking.", "danger");
+                return;
+            }
+
+            const statusElement = $('<span class="btn__status"><em>Processing...</em></span>');
+            _this.find('.icon-wrapper').append(statusElement);
+
+            $.ajax({
+                url: ajax_object.ajax_url,
+                type: "POST",
+                data: {
+                    action: "ai_assistant_correct_menu",
+                    menu_name: menuName,
+                    menu_html: selectedTextBeforeClick
+                },
+                success: function (response) {
+                    statusElement.remove();
+                    if (response.success) {
+                        showAlert(`✅ ${response.data.message}`, "success");
+                        replaceSelectedTextInTextarea(response.data.menu_code); // 🎯 Replace selected text
+                        _this.find('.icon-wrapper').addClass("anim");
+                        setTimeout(() => _this.find('.icon-wrapper').removeClass("anim"), 1200);
+                    } else {
+                        showAlert(`❌ ${response.data}`, "danger");
+                    }
+                },
+                error: function (xhr) {
+                    statusElement.remove();
+                    showAlert(`❌ AJAX error: ${xhr.responseText}`, "danger");
+                }
+            });
+        }
+
+
+// 🌟 Replace selected text after the server response
 
 
     });

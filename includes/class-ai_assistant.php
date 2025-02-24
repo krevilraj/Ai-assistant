@@ -72,6 +72,11 @@ class AI_Assistant
         add_action('wp_ajax_ai_assistant_get_theme_details', [$this, 'ai_assistant_get_theme_details']);
         add_action('wp_ajax_ai_assistant_create_page_and_template', [$this, 'ai_assistant_create_page_and_template']);
         add_action('wp_ajax_ai_assistant_create_menu', [$this, 'ai_assistant_create_menu']);
+        add_action('wp_ajax_ai_assistant_correct_header', [$this, 'ai_assistant_correct_header']);
+        add_action('wp_ajax_ai_assistant_correct_footer', [$this, 'ai_assistant_correct_footer']);
+        add_action('wp_ajax_ai_assistant_correct_menu', [$this, 'ai_assistant_correct_menu']);
+        add_action('wp_ajax_ai_assistant_get_theme_files', [$this, 'ai_assistant_get_theme_files']);
+        add_action('wp_ajax_ai_assistant_load_theme_file', [$this, 'ai_assistant_load_theme_file']);
 
 
     }
@@ -476,6 +481,200 @@ get_header(); ?>
             wp_send_json_error("Menu already exists.");
         }
     }
+    // correct header
+    public function ai_assistant_correct_header() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("Unauthorized access.");
+        }
+
+        $header_content = stripslashes($_POST['header_content']);
+        if (empty($header_content)) {
+            wp_send_json_error("No header content received.");
+        }
+
+        // ✅ 1. Get text-domain from options
+        $text_domain = get_option('ai_assistant_text_domain', 'ai_assistant');
+
+        // ✅ 2. Extract all CSS links
+        preg_match_all('/<link[^>]+href=["\']([^"\']+)["\']/i', $header_content, $matches);
+
+        $theme_dir = get_stylesheet_directory();
+        $functions_path = $theme_dir . '/functions.php';
+        $header_path = $theme_dir . '/header.php';
+
+        // ✅ 3. Generate wp_enqueue_style() calls
+        $enqueue_code = "\n// 🔗 Enqueued styles from header\nfunction {$text_domain}_enqueue_styles() {\n";
+        foreach ($matches[1] as $url) {
+            $handle = sanitize_title(basename($url, '.css')) . '-css';
+
+            if (strpos($url, 'http') === 0) {
+                $enqueue_code .= "    wp_enqueue_style('{$handle}', '{$url}');\n";
+            } else {
+                $enqueue_code .= "    wp_enqueue_style('{$handle}', get_template_directory_uri() . '/{$url}', array(), null, 'all');\n";
+            }
+        }
+        $enqueue_code .= "    wp_enqueue_style('{$text_domain}-style', get_stylesheet_uri(), array(), filemtime(get_template_directory() . '/style.css'), 'all');\n";
+        $enqueue_code .= "}\nadd_action('wp_enqueue_scripts', '{$text_domain}_enqueue_styles');\n";
+
+        // ✅ 4. Append to functions.php
+        if (file_put_contents($functions_path, $enqueue_code, FILE_APPEND) === false) {
+            wp_send_json_error("Failed to update functions.php.");
+        }
+
+        // ✅ 5. Replace <a href="index.html|index.php"> with home_url()
+        $header_content = preg_replace(
+            '/<a([^>]+)href=["\']([^"\']*(index\.html|index\.php))["\']/i',
+            '<a$1href="<?php echo home_url(); ?>"',
+            $header_content
+        );
+
+        // ✅ 6. Replace internal <img src=""> with bloginfo('template_url')
+        $header_content = preg_replace_callback(
+            '/<img([^>]+)src=["\']([^"\':]+)["\']/i',
+            function ($matches) {
+                $src = $matches[2];
+                return '<img' . $matches[1] . 'src="<?php bloginfo(\'template_url\'); ?>/' . ltrim($src, '/') . '"';
+            },
+            $header_content
+        );
+
+        // ✅ 7. Extract HTML after <body> and append to header.php
+        if (preg_match('/<body[^>]*>(.*)$/is', $header_content, $body_content)) {
+            $body_html = trim($body_content[1]);
+
+            if (file_put_contents($header_path, "\n<!-- Content from header correction -->\n{$body_html}\n", FILE_APPEND) === false) {
+                wp_send_json_error("Failed to update header.php.");
+            }
+        } else {
+            wp_send_json_error("No valid <body> content found in header.");
+        }
+
+        wp_send_json_success("Header processed, styles enqueued, links updated, and content appended successfully.");
+    }
+    // correct footer
+    public function ai_assistant_correct_footer() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("Unauthorized access.");
+        }
+
+        $footer_content = stripslashes($_POST['footer_content']);
+        if (empty($footer_content)) {
+            wp_send_json_error("No footer content received.");
+        }
+
+        // ✅ 1. Get text-domain from options
+        $text_domain = get_option('ai_assistant_text_domain', 'ai_assistant');
+
+        $theme_dir = get_stylesheet_directory();
+        $functions_path = $theme_dir . '/functions.php';
+        $footer_path = $theme_dir . '/footer.php';
+
+        // ✅ 2. Extract all JS links
+        preg_match_all('/<script[^>]+src=["\']([^"\']+)["\']/i', $footer_content, $matches);
+
+        // ✅ 3. Generate wp_enqueue_script() calls
+        $enqueue_code = "\n// 🚀 Enqueued scripts from footer\nfunction {$text_domain}_enqueue_scripts() {\n";
+        foreach ($matches[1] as $url) {
+            $handle = sanitize_title(basename($url, '.js')) . '-js';
+            if (strpos($url, 'http') === 0) {
+                $enqueue_code .= "    wp_enqueue_script('{$handle}', '{$url}', array('jquery'), null, true);\n";
+            } else {
+                $enqueue_code .= "    wp_enqueue_script('{$handle}', get_template_directory_uri() . '/{$url}', array('jquery'), null, true);\n";
+            }
+        }
+        $enqueue_code .= "}\nadd_action('wp_enqueue_scripts', '{$text_domain}_enqueue_scripts');\n";
+
+        // ✅ 4. Append enqueue scripts to functions.php
+        if (file_put_contents($functions_path, $enqueue_code, FILE_APPEND) === false) {
+            wp_send_json_error("Failed to update functions.php.");
+        }
+
+        // ✅ 5. Remove <script> tags, </body>, </html>, and comments
+        $footer_content = preg_replace('/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/i', '', $footer_content);
+        $footer_content = preg_replace('/<\/body>|<\/html>/i', '', $footer_content);
+        $footer_content = preg_replace('/<!--(.*?)-->/s', '', $footer_content);
+
+        // ✅ 6. Replace <a> tags linking to index.html/index.php with home_url()
+        $footer_content = preg_replace(
+            '/<a([^>]+)href=["\']([^"\']*(index\.html|index\.php))["\']/i',
+            '<a$1href="<?php echo home_url(); ?>"',
+            $footer_content
+        );
+
+        // ✅ 7. Replace internal <img src="">
+        $footer_content = preg_replace_callback(
+            '/<img([^>]+)src=["\']([^"\':]+)["\']/i',
+            function ($matches) {
+                $src = $matches[2];
+                return '<img' . $matches[1] . 'src="<?php bloginfo(\'template_url\'); ?>/' . ltrim($src, '/') . '"';
+            },
+            $footer_content
+        );
+
+        // ✅ 8. Remove empty lines and trim extra whitespace
+        $footer_content = preg_replace('/^\h*\v+/m', '', $footer_content);  // Remove empty lines
+        $footer_content = trim($footer_content);                           // Trim leading/trailing whitespace
+
+        // ✅ 9. Prepend processed content to footer.php
+        $existing_footer = file_exists($footer_path) ? file_get_contents($footer_path) : '';
+        $new_footer_content = $footer_content . "\n" . $existing_footer;
+        if (file_put_contents($footer_path, $new_footer_content) === false) {
+            wp_send_json_error("Failed to update footer.php.");
+        }
+
+        wp_send_json_success("Footer processed, scripts enqueued, empty lines removed, and content prepended successfully.");
+    }
+    //correct menu
+    public function ai_assistant_correct_menu() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("Unauthorized access.");
+        }
+
+        $menu_name = sanitize_text_field($_POST['menu_name']);
+        $menu_html = stripslashes($_POST['menu_html']);
+        if (empty($menu_name) || empty($menu_html)) {
+            wp_send_json_error("Menu name or HTML content missing.");
+        }
+
+        // ✅ Get text-domain from options
+        $text_domain = get_option('ai_assistant_text_domain', 'ai_assistant');
+
+        // ✅ Detect if Bootstrap-based menu
+        $is_bootstrap = (strpos($menu_html, 'navbar') !== false || strpos($menu_html, 'dropdown') !== false);
+
+        // ✅ Generate WordPress menu code snippet
+        $menu_code = $is_bootstrap ?
+            "<?php wp_nav_menu(['theme_location' => '{$menu_name}', 'menu_class' => 'navbar-nav me-auto mb-2 mb-lg-0', 'container' => false]); ?>" :
+            "<?php wp_nav_menu(['theme_location' => '{$menu_name}', 'menu_class' => 'menu', 'container' => false]); ?>";
+
+        // 🚀 Return the generated WordPress menu code
+        wp_send_json_success([
+            'menu_code' => $menu_code,
+            'message'   => "✅ WordPress menu code generated successfully!"
+        ]);
+    }
+
+    // ✅ Fetch all theme files
+    public function ai_assistant_get_theme_files() {
+        $theme_dir = get_stylesheet_directory();
+        $files = array_diff(scandir($theme_dir), array('.', '..'));
+        wp_send_json_success(['files' => array_values($files)]);
+    }
+
+    // ✅ Load file content for editor
+    public function ai_assistant_load_theme_file() {
+        if (!isset($_POST['filename'])) wp_send_json_error('Filename missing.');
+
+        $theme_dir = get_stylesheet_directory();
+        $file_path = $theme_dir . '/' . sanitize_file_name($_POST['filename']);
+
+        if (!file_exists($file_path)) wp_send_json_error('File not found.');
+        $content = file_get_contents($file_path);
+        wp_send_json_success(['content' => $content]);
+    }
+
+
+
 
 
 }

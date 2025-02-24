@@ -118,9 +118,18 @@ class AI_Assistant_Admin {
             $menu_icon_url,                                 // Menu icon URL
             81                                              // Position in menu
         );
+        // 🎨 Custom Theme Editor Submenu
+        add_submenu_page(
+            'ai_assistant-settings',
+            __('Theme Editor', 'ai_assistant'),
+            __('Theme Editor', 'ai_assistant'),
+            'manage_options',
+            'ai_assistant-theme-editor',
+            [$this, 'display_theme_editor_page']
+        );
     }
 
-
+    //display setting page
     public function display_settings_page() {
         ?>
         <div class="wrap ai_assistant-settings-page">
@@ -162,8 +171,13 @@ class AI_Assistant_Admin {
         <?php
     }
 
+    //display Editor page
+    public function display_theme_editor_page() {
+        include plugin_dir_path(__FILE__) . 'pages/custom_theme_editor.php';
+    }
 
 
+    //add link that opens a popup from the adminbar
     public function add_custom_field_link_to_admin_bar($wp_admin_bar) {
         // Show only if the user has the required capability
         if (!current_user_can('manage_options')) {
@@ -172,8 +186,8 @@ class AI_Assistant_Admin {
 
         // Add the custom link to the admin bar
         $wp_admin_bar->add_node(array(
-            'id'       => 'create_custom_field',
-            'title'    => 'Create Custom Field',
+            'id'       => 'ai_assistant',
+            'title'    => 'Ai Assistant',
             'href'     => '#',
             'meta'     => array(
                 'class' => 'open-custom-field-popup', // CSS class for styling
@@ -182,6 +196,7 @@ class AI_Assistant_Admin {
         ));
     }
 
+    //arrange the order of the menu in adminbar
     public function add_custom_field_js() {
         ?>
         <script>
