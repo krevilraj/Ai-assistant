@@ -799,10 +799,6 @@ jQuery(document).ready(function ($) {
             });
         }
 
-
-// 🌟 Replace selected text after the server response
-
-
     });
 
 });

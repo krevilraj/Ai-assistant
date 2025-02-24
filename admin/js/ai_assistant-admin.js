@@ -96,5 +96,27 @@ jQuery(document).ready(function ($) {
 
 });
 
+jQuery(document).ready(function ($) {
+	// ✅ Open Modal
+	$('#open-dashicon-picker').on('click', function () {
+		$('#dashicon-picker-modal').fadeIn('fast');
+	});
+
+	// ✅ Close Modal
+	$('#close-dashicon-picker, #dashicon-picker-overlay').on('click', function () {
+		$('#dashicon-picker-modal').fadeOut('fast');
+	});
+
+	// ✅ Handle Icon Selection
+	$(document).on('click', '.dashicon-picker-list li', function () {
+		const selectedIcon = $(this).data('icon');
+		$('#dashi_icon_field').val(`dashicons-${selectedIcon}`); // Paste icon slug into text field
+		$('#dashicon-picker-modal').fadeOut('fast');
+	});
+});
+
+
+
+
 
 
