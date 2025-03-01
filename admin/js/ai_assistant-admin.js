@@ -113,7 +113,90 @@ jQuery(document).ready(function ($) {
 		$('#dashi_icon_field').val(`dashicons-${selectedIcon}`); // Paste icon slug into text field
 		$('#dashicon-picker-modal').fadeOut('fast');
 	});
+
+	// delete files and folders from theme editor
+	$(document).on('click', '.delete-item', function (e) {
+		e.preventDefault();
+		const filePath = $(this).data('path');
+		const confirmDelete = confirm(`Are you sure you want to delete "${filePath}"?`);
+
+		if (confirmDelete) {
+			$.ajax({
+				url: ajax_object.ajax_url,
+				type: "POST",
+				data: {
+					action: "ai_assistant_delete_file",
+					file_path: filePath
+				},
+				success: function (response) {
+					if (response.success) {
+						showAlert(`✅ ${response.data}`, "success");
+						location.reload(); // Refresh after deletion
+					} else {
+						showAlert(`❌ ${response.data}`, "danger");
+					}
+				},
+				error: function () {
+					showAlert("❌ Error occurred while deleting the file/folder.", "danger");
+				}
+			});
+		}
+	});
 });
+
+
+jQuery(document).ready(function ($) {
+	let originalContent = $("#theme-file-editor").val().trim();
+
+	// Detect changes in the textarea
+	$("#theme-file-editor").on("input", function () {
+		let currentContent = $(this).val().trim();
+		if (currentContent !== originalContent) {
+			$("#file_save").removeClass("button-disabled");
+		} else {
+			$("#file_save").addClass("button-disabled");
+		}
+	});
+
+	$("#file_save").on("click", function () {
+		var filePath = new URLSearchParams(window.location.search).get("file");
+		var fileContent = $("#theme-file-editor").val().trim();
+		var _this = $(this);
+		if (!filePath) {
+			showAlert("❌ No file selected!", "danger");
+			return;
+		}
+
+
+		_this.text("Saving...");
+
+		$.ajax({
+			url: ajax_object.ajax_url,
+			type: "POST",
+			data: {
+				action: "ai_assistant_save_file",
+				file_path: filePath,
+				file_content: fileContent
+			},
+			success: function (response) {
+				if (response.success) {
+					showAlert("✅ File saved successfully!", "success");
+					_this.text("Saved");
+
+				} else {
+					showAlert("❌ Failed to save file: " + response.data, "danger");
+					_this.text("Retry");
+				}
+			},
+			error: function () {
+				_this.text("Retry");
+				showAlert("❌ AJAX error occurred while saving the file.", "danger");
+			}
+		});
+	});
+});
+
+
 
 
 

@@ -20,23 +20,7 @@
         <div id="basic_setting" class="custom-tab-content active">
             <h2>Basic Message</h2>
             <ul class="action__list">
-                <li><span class="open__child">Change page to homepage</span>
-                    <div class="action__setting">
-                        <input type="text" name="page_id" placeholder="Page id">
-                        <?php ai_assistant_render_spark_button('change_default_page'); ?>
-                    </div>
-                </li>
-                <li><span class="open__child">Create Page</span>
-                    <div class="action__setting">
-                        <input type="text" name="page_name" placeholder="Page name"><br>
-                        <input type="checkbox" name="create_page_template"> Create page template
-                        <?php ai_assistant_render_spark_button('create_page_and_template_file'); ?>
-                    </div>
-                </li>
-                <li><span id="reset_permalink">Reset permalink</span></li>
-                <li><span id="reset_permalink">Blog pages show at most</span></li>
-
-
+                <?php include plugin_dir_path(__FILE__) . '../partials/partial-miscelleneous_task.php'; ?>
             </ul>
 
         </div>

@@ -463,6 +463,7 @@ jQuery(document).ready(function ($) {
 });
 
 jQuery(document).ready(function ($) {
+
     // ✅ Populate input fields with saved values
     function populateThemeDetails() {
         $.ajax({
@@ -487,7 +488,6 @@ jQuery(document).ready(function ($) {
     }
 
 
-
     populateThemeDetails(); // ✅ Load on page load
 
 
@@ -496,12 +496,12 @@ jQuery(document).ready(function ($) {
     let selectionEndIndex = 0;
 
 // 🌟 Track the text selection inside the textarea
-    document.getElementById('menu-editor').addEventListener('mouseup', function () {
-        selectionStartIndex = this.selectionStart;
-        selectionEndIndex = this.selectionEnd;
-        selectedTextBeforeClick = this.value.substring(selectionStartIndex, selectionEndIndex);
-        console.log("🔍 Selected text:", selectedTextBeforeClick);
-    });
+//     document.getElementById('menu-editor').addEventListener('mouseup', function () {
+//         selectionStartIndex = this.selectionStart;
+//         selectionEndIndex = this.selectionEnd;
+//         selectedTextBeforeClick = this.value.substring(selectionStartIndex, selectionEndIndex);
+//         console.log("🔍 Selected text:", selectedTextBeforeClick);
+//     });
 
 // 🌟 Replace the selected text after AJAX response
     function replaceSelectedTextInTextarea(newText) {
@@ -518,288 +518,200 @@ jQuery(document).ready(function ($) {
     }
 
     // ✅ Create theme and save data
+
+
+    const actionHandlers = {
+        change_default_page: handleChangeDefaultPage,
+        create_theme: handleCreateTheme,
+        create_page_and_template_file: handleCreatePageAndTemplate,
+        create_menu: handleCreateMenu,
+        correct_header: handleCorrectHeader,
+        correct_footer: handleCorrectFooter,
+        correct_menu: handleCorrectMenu,
+        create_custom_post_type: handleCreateCPT,
+        create_user_type: handleCreateUserType,
+        remove_user_type: handleDeleteUserType,
+        // ⚡️ Add new actions here without modifying main event handler
+    };
+
     $(document).on("click", ".change_setting", function () {
-        var _this = $(this);
-        var parentLi = _this.closest('li'); // ✅ Get parent <li> first
-        //change default homepage
-        if (_this.data('action') === "change_default_page") {
+        const _this = $(this);
+        const action = _this.data('action');
+        const handler = actionHandlers[action];
 
-            var pageId = parentLi.find('[name="page_id"]').val().trim();
-            var submitbtn = $(this).find(".icon-wrapper");
-
-            if (!pageId) {
-                showAlert("❌ Please enter a valid Page ID.", "danger");
-                return;
-            }
-
-            $.ajax({
-                url: ajax_object.ajax_url,
-                type: "POST",
-                data: {
-                    action: "set_homepage",
-                    page_id: pageId,
-                },
-                success: function (response) {
-                    if (response.success) {
-                        submitbtn.addClass("anim");
-                        setTimeout(function () {
-                            submitbtn.removeClass("anim");
-                        }, 1200); // Same as animation duration
-                        showAlert("✅ Homepage updated successfully!", "success");
-                    } else {
-                        showAlert("❌ Failed to update homepage: " + response.data, "danger");
-                    }
-                },
-                error: function () {
-                    showAlert("❌ Error occurred while updating homepage.", "danger");
-                },
-            });
+        if (typeof handler === 'function') {
+            handler(_this, $); // 🚀 Dynamically call the handler function
+        } else {
+            console.warn(`🚨 No handler defined for action: ${action}`);
         }
-        //create theme folder and copy basic file
-        else if (_this.data('action') === "create_theme") {
-            var statusElement = $('<span class="btn__status"><em>wait...</em></span>');
-            _this.find('.icon-wrapper').append(statusElement);
-
-
-            // Get values from inputs by 'name' attribute inside the parent <li>
-            var themeName = parentLi.find('[name="theme_name"]').val().trim();
-            var themeUri = parentLi.find('[name="theme_uri"]').val().trim();
-            var author = parentLi.find('[name="author"]').val().trim();
-            var authorUri = parentLi.find('[name="author_uri"]').val().trim();
-            var textDomain = parentLi.find('[name="text_domain"]').val().trim();
-
-
-            if (!themeName) {
-                showAlert("❌ Theme Name is required.", "danger");
-                statusElement.remove(); // ✅ Hide status if validation fails
-                return;
-            }
-
-            $.ajax({
-                url: ajax_object.ajax_url,
-                type: "POST",
-                data: {
-                    action: "ai_assistant_create_theme",
-                    theme_name: themeName,
-                    theme_uri: themeUri,
-                    author: author,
-                    author_uri: authorUri,
-                    text_domain: textDomain
-                },
-                success: function (response) {
-                    statusElement.remove(); // ✅ Hide status after success or failure
-
-                    if (response.success) {
-                        console.log("Server Response:", response); // 🚀 Show full response in console
-                        showAlert(`✅ ${response.data}`, "success"); // 🚀 Display server message in alert
-                        populateThemeDetails(); // Refresh with updated details
-                        _this.find('.icon-wrapper').addClass("anim");
-
-                        setTimeout(function () {
-                            _this.find('.icon-wrapper').removeClass("anim");
-                        }, 1200); // ✅ Remove animation after some time
-                    } else {
-                        console.log("Server Error:", response); // 🚀 Show error details
-                        showAlert(`❌ ${response.data}`, "danger"); // 🚀 Display server error in alert
-                    }
-                },
-                error: function (xhr, status, error) {
-                    statusElement.remove(); // ✅ Hide status on error
-                    console.log("AJAX Error Details:", xhr.responseText); // 🚀 Log detailed error
-                    showAlert(`❌ AJAX error occurred: ${error}`, "danger");
-                }
-            });
-        }
-        //create template file
-        else if (_this.data('action') === "create_page_and_template_file") {
-            var parentLi = _this.closest('li');
-            var pagedom = parentLi.find('[name="page_name"]');
-            var pageName = parentLi.find('[name="page_name"]').val().trim();
-            var createTemplate = parentLi.find('[name="create_page_template"]').is(':checked') ? 1 : 0;
-
-            if (!pageName) {
-                showAlert("❌ Page name is required.", "danger");
-                return;
-            }
-
-            var statusElement = $('<span class="btn__status"><em>wait...</em></span>');
-            _this.find('.icon-wrapper').append(statusElement);
-
-            $.ajax({
-                url: ajax_object.ajax_url,
-                type: "POST",
-                data: {
-                    action: "ai_assistant_create_page_and_template",
-                    page_name: pageName,
-                    create_template: createTemplate
-                },
-                success: function (response) {
-                    pagedom.val("");
-                    statusElement.remove();
-                    if (response.success) {
-                        showAlert(`✅ ${response.data}`, "success");
-                        _this.find('.icon-wrapper').addClass("anim");
-                        setTimeout(function () {
-                            _this.find('.icon-wrapper').removeClass("anim");
-                        }, 1200);
-                    } else {
-                        showAlert(`❌ ${response.data}`, "danger");
-                    }
-                },
-                error: function (xhr, status, error) {
-                    pagedom.val("");
-                    statusElement.remove();
-                    console.log("AJAX Error:", xhr.responseText);
-                    showAlert(`❌ AJAX error occurred: ${error}`, "danger");
-                }
-            });
-        }
-        //create menu
-        else if (_this.data('action') === "create_menu") {
-            var parentLi = _this.closest('li');
-            var menuName = parentLi.find('input[name="menu_name"]').val().trim();
-
-            if (!menuName) {
-                showAlert("❌ Menu Name is required.", "danger");
-                return;
-            }
-
-            var statusElement = $('<span class="btn__status"><em>wait...</em></span>');
-            _this.find('.icon-wrapper').append(statusElement);
-
-            $.ajax({
-                url: ajax_object.ajax_url,
-                type: "POST",
-                data: {
-                    action: "ai_assistant_create_menu",
-                    menu_name: menuName
-                },
-                success: function (response) {
-                    if (response.success) {
-                        statusElement.remove();
-                        _this.find('.icon-wrapper').addClass("anim");
-                        showAlert(`✅ Menu '${menuName}' created successfully! Redirecting...`, "success");
-                        setTimeout(function () {
-                            window.location.href = `/wp-admin/nav-menus.php?action=edit&menu=${response.data.menu_id}`;
-                        }, 1500); // Redirect after 1.5 seconds
-                    } else {
-                        showAlert(`❌ ${response.data}`, "danger");
-                    }
-                },
-                error: function () {
-                    showAlert("❌ AJAX error occurred while creating menu.", "danger");
-                }
-            });
-        }
-        //correct header
-        else if (_this.data('action') === "correct_header") {
-            var parentLi = _this.closest('li');
-            var headerContent = parentLi.find('textarea[name="correct_header"]').val().trim();
-
-            if (!headerContent) {
-                showAlert("❌ Header content is required.", "danger");
-                return;
-            }
-            var statusElement = $('<span class="btn__status"><em>wait...</em></span>');
-            _this.find('.icon-wrapper').append(statusElement);
-            $.ajax({
-                url: ajax_object.ajax_url,
-                type: "POST",
-                data: {
-                    action: "ai_assistant_correct_header",
-                    header_content: headerContent
-                },
-                success: function (response) {
-                    if (response.success) {
-                        statusElement.remove();
-                        _this.find('.icon-wrapper').addClass("anim");
-                        showAlert(`✅ Header processed and styles enqueued successfully!`, "success");
-                    } else {
-                        showAlert(`❌ ${response.data}`, "danger");
-                    }
-                },
-                error: function () {
-                    showAlert("❌ AJAX error occurred while processing header.", "danger");
-                }
-            });
-        }
-        //correct footer
-        else if (_this.data('action') === "correct_footer") {
-            var parentLi = _this.closest('li');
-            var footerContent = parentLi.find('textarea[name="correct_footer"]').val().trim();
-
-            if (!footerContent) {
-                showAlert("❌ Footer content cannot be empty.", "danger");
-                return;
-            }
-            var statusElement = $('<span class="btn__status"><em>wait...</em></span>');
-            _this.find('.icon-wrapper').append(statusElement);
-            $.ajax({
-                url: ajax_object.ajax_url,
-                type: "POST",
-                data: {
-                    action: "ai_assistant_correct_footer",
-                    footer_content: footerContent
-                },
-                success: function (response) {
-                    statusElement.remove();
-                    _this.find('.icon-wrapper').addClass("anim");
-                    if (response.success) {
-                        showAlert("✅ Footer processed and scripts enqueued successfully!", "success");
-                    } else {
-                        showAlert(`❌ ${response.data}`, "danger");
-                    }
-                },
-                error: function () {
-                    showAlert("❌ AJAX error occurred while processing footer.", "danger");
-                }
-            });
-        }
-        //correct menu
-        else if (_this.data('action') === "correct_menu") {
-            const menuName = parentLi.find('[name="menu__name"]').val().trim();
-            const editorContent = $("#menu-editor").val().trim();
-
-            if (!menuName) {
-                showAlert("❌ Please select a menu.", "danger");
-                return;
-            }
-
-            if (!selectedTextBeforeClick) {
-                showAlert("❌ Please select the menu HTML in the textarea before clicking.", "danger");
-                return;
-            }
-
-            const statusElement = $('<span class="btn__status"><em>Processing...</em></span>');
-            _this.find('.icon-wrapper').append(statusElement);
-
-            $.ajax({
-                url: ajax_object.ajax_url,
-                type: "POST",
-                data: {
-                    action: "ai_assistant_correct_menu",
-                    menu_name: menuName,
-                    menu_html: selectedTextBeforeClick
-                },
-                success: function (response) {
-                    statusElement.remove();
-                    if (response.success) {
-                        showAlert(`✅ ${response.data.message}`, "success");
-                        replaceSelectedTextInTextarea(response.data.menu_code); // 🎯 Replace selected text
-                        _this.find('.icon-wrapper').addClass("anim");
-                        setTimeout(() => _this.find('.icon-wrapper').removeClass("anim"), 1200);
-                    } else {
-                        showAlert(`❌ ${response.data}`, "danger");
-                    }
-                },
-                error: function (xhr) {
-                    statusElement.remove();
-                    showAlert(`❌ AJAX error: ${xhr.responseText}`, "danger");
-                }
-            });
-        }
-
     });
+
+    // 🌟 ✅ Common Utility Functions
+    function showLoading(_this) {
+        const statusElement = $('<span class="btn__status"><em>wait...</em></span>');
+        _this.find('.icon-wrapper').append(statusElement);
+        return statusElement;
+    }
+
+    function showSuccess(_this, message) {
+        showAlert(`✅ ${message}`, "success");
+        _this.find('.icon-wrapper').addClass("anim");
+        setTimeout(() => _this.find('.icon-wrapper').removeClass("anim"), 1200);
+    }
+
+    function sendAjax(data, _this, callback) {
+        const statusElement = showLoading(_this);
+        $.ajax({
+            url: ajax_object.ajax_url,
+            type: "POST",
+            data: data,
+            success: function (response) {
+                statusElement.remove();
+                if (response.success) {
+                    showSuccess(_this, response.data);
+                    if (callback) callback(response);
+                } else {
+                    showAlert(`❌ ${response.data}`, "danger");
+                }
+            },
+            error: function (xhr) {
+                statusElement.remove();
+                showAlert(`❌ AJAX error: ${xhr.responseText}`, "danger");
+            }
+        });
+    }
+
+    // 💡 💡 💡 Handler Functions Below (Reusable & Clean) 💡 💡 💡
+    // change default homepage
+    function handleChangeDefaultPage(_this, $) {
+        const pageId = _this.closest('li').find('[name="page_id"]').val().trim();
+        if (!pageId) return showAlert("❌ Page ID is required.", "danger");
+        sendAjax({action: "set_homepage", page_id: pageId}, _this);
+    }
+
+    // create folder and files for theme
+    function handleCreateTheme(_this, $) {
+        const parentLi = _this.closest('li');
+        const themeData = {
+            action: "ai_assistant_create_theme",
+            theme_name: parentLi.find('[name="theme_name"]').val().trim(),
+            theme_uri: parentLi.find('[name="theme_uri"]').val().trim(),
+            author: parentLi.find('[name="author"]').val().trim(),
+            author_uri: parentLi.find('[name="author_uri"]').val().trim(),
+            text_domain: parentLi.find('[name="text_domain"]').val().trim()
+        };
+
+        if (!themeData.theme_name) return showAlert("❌ Theme Name is required.", "danger");
+        sendAjax(themeData, _this, populateThemeDetails);
+    }
+
+    //create page and template
+    function handleCreatePageAndTemplate(_this, $) {
+        const parentLi = _this.closest('li');
+        var pageDom = parentLi.find('[name="page_name"]');
+        const pageName = pageDom.val().trim();
+        const createTemplate = parentLi.find('[name="create_page_template"]').is(':checked') ? 1 : 0;
+
+        if (!pageName) return showAlert("❌ Page name is required.", "danger");
+        sendAjax({
+            action: "ai_assistant_create_page_and_template",
+            page_name: pageName,
+            create_template: createTemplate
+        }, _this);
+        pageDom.val("");
+    }
+
+    // Create menu and redirect to menu page
+    function handleCreateMenu(_this, $) {
+        const menuName = _this.closest('li').find('input[name="menu_name"]').val().trim();
+        if (!menuName) return showAlert("❌ Menu Name is required.", "danger");
+
+        sendAjax({action: "ai_assistant_create_menu", menu_name: menuName}, _this, function (response) {
+            setTimeout(() => window.location.href = `/wp-admin/nav-menus.php?action=edit&menu=${response.data.menu_id}`, 1500);
+        });
+    }
+
+    // handle Correction of Header
+    function handleCorrectHeader(_this, $) {
+        const headerContent = _this.closest('li').find('textarea[name="correct_header"]').val().trim();
+        if (!headerContent) return showAlert("❌ Header content is required.", "danger");
+
+        sendAjax({action: "ai_assistant_correct_header", header_content: headerContent}, _this);
+    }
+
+    //handle Correction of Footer
+    function handleCorrectFooter(_this, $) {
+        const footerContent = _this.closest('li').find('textarea[name="correct_footer"]').val().trim();
+        if (!footerContent) return showAlert("❌ Footer content cannot be empty.", "danger");
+
+        sendAjax({action: "ai_assistant_correct_footer", footer_content: footerContent}, _this);
+    }
+
+    // handle correction of menu
+    function handleCorrectMenu(_this, $) {
+        const parentLi = _this.closest('li');
+        const menuName = parentLi.find('[name="menu__name"]').val().trim();
+        const editorContent = $("#menu-editor").val().trim();
+
+        if (!menuName) return showAlert("❌ Please select a menu.", "danger");
+        if (!selectedTextBeforeClick) return showAlert("❌ Please select the menu HTML in the textarea before clicking.", "danger");
+
+        sendAjax({
+            action: "ai_assistant_correct_menu",
+            menu_name: menuName,
+            menu_html: selectedTextBeforeClick
+        }, _this, function (response) {
+            replaceSelectedTextInTextarea(response.data.menu_code);
+        });
+    }
+
+    // 🌟 🚀 🌟 Handle CPT Creation
+    function handleCreateCPT(_this, $) {
+        const parentLi = _this.closest('li');
+        const cptData = {
+            action: "ai_assistant_create_cpt",
+            cpt_slug: parentLi.find('[name="cpt_slug"]').val().trim(),
+            plural_label: parentLi.find('[name="plural__label"]').val().trim(),
+            singular_label: parentLi.find('[name="singular__label"]').val().trim(),
+            dashi_icon: parentLi.find('[name="dashi_icon"]').val().trim(),
+            supports: []
+        };
+
+        if (!cptData.cpt_slug || !cptData.plural_label || !cptData.singular_label) {
+            return showAlert("❌ Slug, Plural Label, and Singular Label are required.", "danger");
+        }
+
+        if (parentLi.find('[name="cpt__editor"]').is(':checked')) cptData.supports.push('editor');
+        if (parentLi.find('[name="cpt__featured_image"]').is(':checked')) cptData.supports.push('thumbnail');
+        const createTemplate = parentLi.find('[name="cpt__template"]').is(':checked') ? 1 : 0;
+        cptData.create_template = createTemplate;
+
+        sendAjax(cptData, _this, function (response) {
+            if (createTemplate) {
+                showAlert(`✅ Custom Post Type '${cptData.cpt_slug}' created with single-${cptData.cpt_slug}.php template.`, "success");
+            } else {
+                showAlert(`✅ Custom Post Type '${cptData.cpt_slug}' created successfully.`, "success");
+            }
+        });
+    }
+
+    function handleCreateUserType(_this, $) {
+        const parentLi = _this.closest('li');
+        const userType = parentLi.find('input[name="user_type"]:text').val().trim();
+        const userRole = parentLi.find('input[name="user_type"]:checked').val();
+
+        if (!userType) return showAlert("❌ User type is required.", "danger");
+        if (!userRole) return showAlert("❌ Please select a role.", "danger");
+
+        sendAjax({action: "ai_assistant_create_user_type", user_type: userType, user_role: userRole}, _this);
+    }
+
+    function handleDeleteUserType(_this,$){
+        const parentLi = _this.closest('li');
+        const userType = parentLi.find('input[name="remove_user_type"]:text').val().trim();
+        sendAjax({action: "ai_assistant_delete_user_role", role: userType}, _this);
+    }
+
 
 });
 

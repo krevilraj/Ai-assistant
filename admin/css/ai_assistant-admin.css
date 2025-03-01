@@ -171,3 +171,29 @@
 .dashicon-picker-list li p {
     font-size: 11px; word-wrap: break-word;
 }
+.delete-item {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    margin-left: 10px;
+    color: #dc3232;
+}
+
+.delete-item:hover .dashicons-trash {
+    color: #b32d2e;
+}
+.file-list .file,.file-list .folder{
+    position:relative;
+}
+.file-list .file > button,.file-list .folder > button{
+    position:absolute;
+    right:0;
+    display:none;
+}
+.file-list .file:hover button,.file-list .folder:hover button{
+    display:inline-block;
+}
+.button-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}

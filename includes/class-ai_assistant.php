@@ -77,8 +77,11 @@ class AI_Assistant
         add_action('wp_ajax_ai_assistant_correct_menu', [$this, 'ai_assistant_correct_menu']);
         add_action('wp_ajax_ai_assistant_get_theme_files', [$this, 'ai_assistant_get_theme_files']);
         add_action('wp_ajax_ai_assistant_load_theme_file', [$this, 'ai_assistant_load_theme_file']);
-
-
+        add_action('wp_ajax_ai_assistant_create_cpt', [$this, 'ai_assistant_create_cpt_handler']);
+        add_action('wp_ajax_ai_assistant_delete_file', [$this, 'ai_assistant_delete_file']);
+        add_action('wp_ajax_ai_assistant_create_user_type', [$this, 'ai_assistant_create_user_type']);
+        add_action('wp_ajax_ai_assistant_delete_user_role', [$this, 'ai_assistant_delete_user_role']);
+        add_action('wp_ajax_ai_assistant_save_file', [$this, 'ai_assistant_save_file']);
     }
 
     private function define_public_hooks()
@@ -151,6 +154,36 @@ class AI_Assistant
         } else {
             wp_send_json_error("Failed to save JSON.");
         }
+    }
+
+    public function ai_assistant_save_file() {
+        // ✅ Check user capability
+        if (!current_user_can('edit_theme_options')) {
+            wp_send_json_error("Unauthorized access.");
+        }
+
+        // ✅ Validate inputs
+        if (empty($_POST['file_path']) || !isset($_POST['file_content'])) {
+            wp_send_json_error("Missing file path or content.");
+        }
+
+        $relative_path = sanitize_text_field($_POST['file_path']);
+        $file_content = stripslashes($_POST['file_content']);
+
+        $theme_dir = realpath(get_stylesheet_directory()); // Theme directory
+        $file_path = realpath($theme_dir . '/' . $relative_path); // Resolve absolute path
+
+        // ✅ Security Check: Ensure the file is within the theme directory
+        if (!$file_path || strpos($file_path, $theme_dir) !== 0 || !file_exists($file_path)) {
+            wp_send_json_error("File not found or access denied.");
+        }
+
+        // ✅ Write new content to the file
+        if (file_put_contents($file_path, $file_content) === false) {
+            wp_send_json_error("Failed to write to file.");
+        }
+
+        wp_send_json_success("File updated successfully!");
     }
 
     function get_acf_location_data(){
@@ -420,7 +453,7 @@ Tags: e-commerce, custom-menu, custom-logo, featured-images, footer-widgets, the
         $page_name = sanitize_text_field($_POST['page_name']);
         $create_template = isset($_POST['create_template']) ? boolval($_POST['create_template']) : false;
         $theme_dir = get_stylesheet_directory();
-        $template_slug = sanitize_title($page_name) . '-template.php';
+        $template_slug = 'template-'.sanitize_title($page_name) . '.php';
 
         // ✅ Create template file if checkbox is checked
         if ($create_template) {
@@ -660,7 +693,39 @@ get_header(); ?>
         $files = array_diff(scandir($theme_dir), array('.', '..'));
         wp_send_json_success(['files' => array_values($files)]);
     }
+    // Delete files and folder
+    function ai_assistant_delete_file() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("❌ Unauthorized access.");
+        }
 
+        $theme_dir = get_stylesheet_directory();
+        $file_path = sanitize_text_field($_POST['file_path']);
+        $full_path = $theme_dir . '/' . $file_path;
+
+        if (!file_exists($full_path)) {
+            wp_send_json_error("❌ File or folder not found.");
+        }
+
+        // 🗑 Delete folder or file
+        if (is_dir($full_path)) {
+            delete_folder($full_path);
+        } else {
+            unlink($full_path);
+        }
+        wp_send_json_success("✅ Successfully deleted: " . basename($file_path));
+    }
+    // Recursive folder deletion
+    function delete_folder($folder) {
+        foreach (glob($folder . '/*') as $file) {
+            if (is_dir($file)) {
+                delete_folder($file);
+            } else {
+                unlink($file);
+            }
+        }
+        rmdir($folder);
+    }
     // ✅ Load file content for editor
     public function ai_assistant_load_theme_file() {
         if (!isset($_POST['filename'])) wp_send_json_error('Filename missing.');
@@ -672,7 +737,109 @@ get_header(); ?>
         $content = file_get_contents($file_path);
         wp_send_json_success(['content' => $content]);
     }
+    // create cpt
+    function ai_assistant_create_cpt_handler() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("Unauthorized access.");
+        }
 
+        $cpt_slug = sanitize_title($_POST['cpt_slug']);
+        $plural_label = sanitize_text_field($_POST['plural_label']);
+        $singular_label = sanitize_text_field($_POST['singular_label']);
+        $dashi_icon = sanitize_text_field($_POST['dashi_icon']);
+        $supports = isset($_POST['supports']) ? $_POST['supports'] : [];
+        $create_template = intval($_POST['create_template']);
+
+        if (empty($cpt_slug) || empty($plural_label) || empty($singular_label)) {
+            wp_send_json_error("❌ Required fields are missing.");
+        }
+
+        $functions_path = get_stylesheet_directory() . '/functions.php';
+        $cpt_code = "\n// 🎯 Custom Post Type: {$cpt_slug}\n";
+        $cpt_code .= "function register_{$cpt_slug}_cpt() {\n";
+        $cpt_code .= "    \$labels = [\n";
+        $cpt_code .= "        'name' => __('{$plural_label}', '{$cpt_slug}'),\n";
+        $cpt_code .= "        'singular_name' => __('{$singular_label}', '{$cpt_slug}'),\n";
+        $cpt_code .= "    ];\n";
+        $cpt_code .= "    \$args = [\n";
+        $cpt_code .= "        'label' => __('{$plural_label}', '{$cpt_slug}'),\n";
+        $cpt_code .= "        'public' => true,\n";
+        $cpt_code .= "        'menu_icon' => '{$dashi_icon}',\n";
+        $cpt_code .= "        'supports' => " . var_export($supports, true) . ",\n";
+        $cpt_code .= "        'has_archive' => true,\n";
+        $cpt_code .= "        'show_in_rest' => true\n";
+        $cpt_code .= "    ];\n";
+        $cpt_code .= "    register_post_type('{$cpt_slug}', \$args);\n";
+        $cpt_code .= "}\nadd_action('init', 'register_{$cpt_slug}_cpt');\n";
+
+        if (file_put_contents($functions_path, $cpt_code, FILE_APPEND) === false) {
+            wp_send_json_error("❌ Failed to register the CPT in functions.php.");
+        }
+
+        if ($create_template === 1) {
+            $template_file = get_stylesheet_directory() . "/single-{$cpt_slug}.php";
+            $template_content = "<?php\n// 🌟 Single Template for '{$cpt_slug}' CPT\nget_header();\n?>\n\n<div class='container'>\n    <?php\n    if (have_posts()) :\n        while (have_posts()) : the_post();\n            the_title('<h1>', '</h1>');\n            the_content();\n        endwhile;\n    endif;\n    ?>\n</div>\n\n<?php get_footer(); ?>";
+            if (file_put_contents($template_file, $template_content) === false) {
+                wp_send_json_error("❌ CPT created, but failed to create template file.");
+            }
+        }
+
+        wp_send_json_success("🎉 Custom Post Type '{$plural_label}' created successfully" . ($create_template ? " with template!" : "!"));
+    }
+    // Create user type
+    function ai_assistant_create_user_type() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("❌ Unauthorized access.");
+        }
+
+        $user_type = sanitize_key($_POST['user_type']);
+        $user_role = sanitize_key($_POST['user_role']);
+
+        if (empty($user_type) || empty($user_role)) {
+            wp_send_json_error("❌ User type and role are required.");
+        }
+
+        if (get_role($user_type)) {
+            wp_send_json_error("❌ User type '{$user_type}' already exists.");
+        }
+
+        // Create the new user role
+        $role = add_role(
+            $user_type, // Role slug
+            ucfirst($user_type), // Display name
+            get_role($user_role)->capabilities // Copy capabilities from selected role
+        );
+
+        if ($role !== null) {
+            wp_send_json_success("✅ User type '{$user_type}' created with '{$user_role}' role.");
+        } else {
+            wp_send_json_error("❌ Failed to create user type '{$user_type}'.");
+        }
+    }
+
+    function ai_assistant_delete_user_role() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("❌ Unauthorized access.");
+        }
+
+        $role = sanitize_key($_POST['role']);
+
+        if (empty($role)) {
+            wp_send_json_error("❌ Role slug is missing.");
+        }
+
+        if (!get_role($role)) {
+            wp_send_json_error("⚠️ Role '{$role}' does not exist.");
+        }
+
+        remove_role($role);
+
+        if (!get_role($role)) {
+            wp_send_json_success("✅ Role '{$role}' has been deleted.");
+        } else {
+            wp_send_json_error("❌ Failed to delete role '{$role}'.");
+        }
+    }
 
 
 

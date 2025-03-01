@@ -233,7 +233,7 @@
     width:100%;
 }
 
-.open__child{
+ul.task-list li{
     position:relative;
 }
 
@@ -242,7 +242,7 @@
 span.open__child::after {
     content: '';
     top: 4px;
-    right: -15px;
+    right: 0;
     display: inline-block;
     position: absolute;
     width: 12px;
@@ -254,7 +254,7 @@ span.open__child::after {
     transition: transform 0.3s ease;
 }
 
-.open__child.active::after {
+ul.task-list li.active .open__child::after {
     transform: rotate(180deg);
 }
 .btn__status{
@@ -267,4 +267,12 @@ span.open__child::after {
 .action__setting label{
     display: block;
     margin-top: 6px;
+}
+.custom-field-popup .open__child {
+    position:absolute;
+}
+.custom-field-popup span.open__child::after {
+    content: '';
+    top: 4px;
+    right: -20px;
 }
