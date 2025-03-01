@@ -23,7 +23,7 @@
                 }
 
                 // ✅ Output file content safely
-                echo '<textarea id="theme-file-editor" placeholder="File content will appear here...">' . esc_textarea($file_content) . '</textarea>';
+                echo '<textarea id="theme-file-editor" spellcheck="false" placeholder="File content will appear here...">' . esc_textarea($file_content) . '</textarea>';
                 ?>
 
                 <button class="button button-primary button-disabled" id="file_save">Save</button>

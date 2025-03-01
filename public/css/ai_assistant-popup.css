@@ -73,7 +73,7 @@
     gap: 5px;
 }
 
-.custom-toolbar-btn {
+.custom-toolbar-btn,.custom-toobar-option {
     padding: 5px 10px;
     font-size: 12px;
     background: #f1f1f1;
@@ -82,7 +82,7 @@
     transition: 0.2s;
 }
 
-.custom-toolbar-btn:hover {
+.custom-toolbar-btn:hover, .custom-toobar-option:hover {
     background: #ddd;
 }
 
@@ -90,7 +90,8 @@
     margin-top: 10px;
 }
 
-.custom-field-popup  textarea {
+
+.custom-field-popup  textarea, .custom-editor  textarea {
     width: 100%;
     height: 200px;
     border: 1px solid #ddd;
@@ -275,4 +276,26 @@ ul.task-list li.active .open__child::after {
     content: '';
     top: 4px;
     right: -20px;
+}
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    15% { transform: translateY(-12px); }
+    30% { transform: translateY(6px); }
+    45% { transform: translateY(-8px); }
+    60% { transform: translateY(4px); }
+    75% { transform: translateY(-5px); }
+    90% { transform: translateY(2px); }
+}
+
+.bounce {
+    animation: bounce 3s ease-in-out;
+}
+.alert__active{
+    background: rgba(255, 0, 0, 0.49);
+}
+.action__setting textarea{
+    width:100%;
+}
+.action__setting .text-align-right{
+    text-align: right;
 }

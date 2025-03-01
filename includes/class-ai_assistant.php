@@ -74,7 +74,7 @@ class AI_Assistant
         add_action('wp_ajax_ai_assistant_create_menu', [$this, 'ai_assistant_create_menu']);
         add_action('wp_ajax_ai_assistant_correct_header', [$this, 'ai_assistant_correct_header']);
         add_action('wp_ajax_ai_assistant_correct_footer', [$this, 'ai_assistant_correct_footer']);
-        add_action('wp_ajax_ai_assistant_correct_menu', [$this, 'ai_assistant_correct_menu']);
+        add_action('wp_ajax_ai_assistant_correct_menu', [$this, 'ai_assistant_detect_and_convert_menu']);
         add_action('wp_ajax_ai_assistant_get_theme_files', [$this, 'ai_assistant_get_theme_files']);
         add_action('wp_ajax_ai_assistant_load_theme_file', [$this, 'ai_assistant_load_theme_file']);
         add_action('wp_ajax_ai_assistant_create_cpt', [$this, 'ai_assistant_create_cpt_handler']);
@@ -526,7 +526,20 @@ get_header(); ?>
         }
 
         // ✅ 1. Get text-domain from options
-        $text_domain = get_option('ai_assistant_text_domain', 'ai_assistant');
+        // First, check if the text-domain is stored in options
+        $text_domain = get_option('ai_assistant_text_domain', '');
+
+        // If it's empty, fetch it from the current theme
+        if (empty($text_domain)) {
+            $theme = wp_get_theme();
+            $text_domain = $theme->get('TextDomain'); // Get the text-domain from style.css
+
+            // If no TextDomain is found, fall back to 'ai_assistant'
+            if (empty($text_domain)) {
+                $text_domain = 'ai_assistant';
+            }
+        }
+
 
         // ✅ 2. Extract all CSS links
         preg_match_all('/<link[^>]+href=["\']([^"\']+)["\']/i', $header_content, $matches);
@@ -535,23 +548,58 @@ get_header(); ?>
         $functions_path = $theme_dir . '/functions.php';
         $header_path = $theme_dir . '/header.php';
 
-        // ✅ 3. Generate wp_enqueue_style() calls
-        $enqueue_code = "\n// 🔗 Enqueued styles from header\nfunction {$text_domain}_enqueue_styles() {\n";
-        foreach ($matches[1] as $url) {
-            $handle = sanitize_title(basename($url, '.css')) . '-css';
 
-            if (strpos($url, 'http') === 0) {
-                $enqueue_code .= "    wp_enqueue_style('{$handle}', '{$url}');\n";
-            } else {
-                $enqueue_code .= "    wp_enqueue_style('{$handle}', get_template_directory_uri() . '/{$url}', array(), null, 'all');\n";
+        // ✅ Read existing content of functions.php
+        $functions_content = file_exists($functions_path) ? file_get_contents($functions_path) : "";
+
+        // ✅ Define the function name
+        $enqueue_function_name = "{$text_domain}_enqueue_styles";
+
+        // ✅ Check if the function already exists in functions.php
+        if (strpos($functions_content, "function {$enqueue_function_name}()") !== false) {
+            // 🔹 Function exists: Add new styles inside the function before closing }
+
+            // Generate new styles
+            $new_enqueue_code = "";
+            foreach ($matches[1] as $url) {
+                $handle = sanitize_title(basename($url, '.css')) . '-css';
+                $new_enqueue_code .= (strpos($url, 'http') === 0)
+                    ? "    wp_enqueue_style('{$handle}', '{$url}');\n"
+                    : "    wp_enqueue_style('{$handle}', get_template_directory_uri() . '/{$url}', array(), null, 'all');\n";
             }
-        }
-        $enqueue_code .= "    wp_enqueue_style('{$text_domain}-style', get_stylesheet_uri(), array(), filemtime(get_template_directory() . '/style.css'), 'all');\n";
-        $enqueue_code .= "}\nadd_action('wp_enqueue_scripts', '{$text_domain}_enqueue_styles');\n";
 
-        // ✅ 4. Append to functions.php
-        if (file_put_contents($functions_path, $enqueue_code, FILE_APPEND) === false) {
-            wp_send_json_error("Failed to update functions.php.");
+            // ✅ Find and insert new styles inside the function before closing }
+            $pattern = "/(function {$enqueue_function_name}\(\) \{.*?)(\n\})/s";
+
+            if (preg_match($pattern, $functions_content, $matches)) {
+                // Insert new styles before the last closing }
+                $updated_function = str_replace($matches[2], "\n" . $new_enqueue_code . $matches[2], $matches[0]);
+                $functions_content = str_replace($matches[0], $updated_function, $functions_content);
+            }
+
+            // ✅ Overwrite functions.php with the updated content
+            if (file_put_contents($functions_path, $functions_content) === false) {
+                wp_send_json_error("Failed to update functions.php.");
+            }
+        } else {
+            // 🔹 Function does NOT exist: Append the new function at the bottom of functions.php
+
+            $enqueue_code = "\n// 🔗 Enqueued styles from header\nfunction {$enqueue_function_name}() {\n";
+
+            foreach ($matches[1] as $url) {
+                $handle = sanitize_title(basename($url, '.css')) . '-css';
+                $enqueue_code .= (strpos($url, 'http') === 0)
+                    ? "    wp_enqueue_style('{$handle}', '{$url}');\n"
+                    : "    wp_enqueue_style('{$handle}', get_template_directory_uri() . '/{$url}', array(), null, 'all');\n";
+            }
+
+            $enqueue_code .= "    wp_enqueue_style('{$text_domain}-style', get_stylesheet_uri(), array(), filemtime(get_template_directory() . '/style.css'), 'all');\n";
+            $enqueue_code .= "}\nadd_action('wp_enqueue_scripts', '{$enqueue_function_name}');\n";
+
+            // ✅ Append the function at the bottom of functions.php
+            if (file_put_contents($functions_path, $enqueue_code, FILE_APPEND) === false) {
+                wp_send_json_error("Failed to append new function.");
+            }
         }
 
         // ✅ 5. Replace <a href="index.html|index.php"> with home_url()
@@ -571,18 +619,55 @@ get_header(); ?>
             $header_content
         );
 
-        // ✅ 7. Extract HTML after <body> and append to header.php
+
+        // ✅ 7. Extract class from <body> if it exists
+        $body_class = '';
+        if (preg_match('/<body[^>]*class=["\']([^"\']+)["\']/i', $header_content, $matches)) {
+            $body_class = trim($matches[1]); // Extract existing classes
+        }
+
+        // ✅ 8. Modify `body_class();` in `header.php` if class exists
+        if (!empty($body_class)) {
+            $header_php_content = file_get_contents($header_path);
+
+            // ✅ Check if `body_class();` exists in header.php
+            if (strpos($header_php_content, 'body_class()') !== false) {
+                // Append extracted class inside `body_class()`
+                $header_php_content = preg_replace(
+                    '/body_class\(\)/',
+                    'body_class("' . esc_attr($body_class) . '")',
+                    $header_php_content
+                );
+            } else {
+                // If `body_class();` is missing, insert the full <body> tag with class
+                $header_php_content = preg_replace(
+                    '/<body([^>]*)>/i',
+                    '<body$1 <?php body_class("' . esc_attr($body_class) . '"); ?>>',
+                    $header_php_content
+                );
+            }
+
+            // ✅ Save updated header.php with merged class
+            file_put_contents($header_path, $header_php_content);
+        }
+
+        // ✅ 9. Extract content inside <body> and append to header.php
         if (preg_match('/<body[^>]*>(.*)$/is', $header_content, $body_content)) {
             $body_html = trim($body_content[1]);
 
-            if (file_put_contents($header_path, "\n<!-- Content from header correction -->\n{$body_html}\n", FILE_APPEND) === false) {
-                wp_send_json_error("Failed to update header.php.");
+            if (!empty(trim($body_html))) {
+                if (file_put_contents($header_path, "\n<!-- Content from header correction -->\n{$body_html}\n", FILE_APPEND) === false) {
+                    wp_send_json_error("Failed to update header.php.");
+                } else {
+                    wp_send_json_success("Header processed, class preserved, and content appended successfully.");
+                }
+            } else {
+                wp_send_json_error("Extracted <body> content is empty.");
             }
         } else {
             wp_send_json_error("No valid <body> content found in header.");
         }
 
-        wp_send_json_success("Header processed, styles enqueued, links updated, and content appended successfully.");
     }
     // correct footer
     public function ai_assistant_correct_footer() {
@@ -606,20 +691,52 @@ get_header(); ?>
         preg_match_all('/<script[^>]+src=["\']([^"\']+)["\']/i', $footer_content, $matches);
 
         // ✅ 3. Generate wp_enqueue_script() calls
-        $enqueue_code = "\n// 🚀 Enqueued scripts from footer\nfunction {$text_domain}_enqueue_scripts() {\n";
-        foreach ($matches[1] as $url) {
-            $handle = sanitize_title(basename($url, '.js')) . '-js';
-            if (strpos($url, 'http') === 0) {
-                $enqueue_code .= "    wp_enqueue_script('{$handle}', '{$url}', array('jquery'), null, true);\n";
-            } else {
-                $enqueue_code .= "    wp_enqueue_script('{$handle}', get_template_directory_uri() . '/{$url}', array('jquery'), null, true);\n";
-            }
-        }
-        $enqueue_code .= "}\nadd_action('wp_enqueue_scripts', '{$text_domain}_enqueue_scripts');\n";
+        $enqueue_function_name = "{$text_domain}_enqueue_scripts";
 
-        // ✅ 4. Append enqueue scripts to functions.php
-        if (file_put_contents($functions_path, $enqueue_code, FILE_APPEND) === false) {
-            wp_send_json_error("Failed to update functions.php.");
+        // ✅ Read functions.php content
+        $functions_content = file_exists($functions_path) ? file_get_contents($functions_path) : "";
+
+        if (strpos($functions_content, "function {$enqueue_function_name}()") !== false) {
+            // 🔹 Function exists: Add new scripts inside the function before closing }
+            $new_enqueue_code = "";
+            foreach ($matches[1] as $url) {
+                $handle = sanitize_title(basename($url, '.js')) . '-js';
+                $new_enqueue_code .= (strpos($url, 'http') === 0)
+                    ? "    wp_enqueue_script('{$handle}', '{$url}', array('jquery'), null, true);\n"
+                    : "    wp_enqueue_script('{$handle}', get_template_directory_uri() . '/{$url}', array('jquery'), null, true);\n";
+            }
+
+            // ✅ Find and insert new scripts inside the function before closing }
+            $pattern = "/(function {$enqueue_function_name}\(\) \{.*?)(\n\})/s";
+
+            if (preg_match($pattern, $functions_content, $matches)) {
+                // Insert new scripts before the last closing }
+                $updated_function = str_replace($matches[2], "\n" . $new_enqueue_code . $matches[2], $matches[0]);
+                $functions_content = str_replace($matches[0], $updated_function, $functions_content);
+            }
+
+            // ✅ Overwrite functions.php with the updated content
+            if (file_put_contents($functions_path, $functions_content) === false) {
+                wp_send_json_error("Failed to update functions.php.");
+            }
+
+        } else {
+            // 🔹 Function does NOT exist: Append the new function at the bottom of functions.php
+            $enqueue_code = "\n// 🚀 Enqueued scripts from footer\nfunction {$enqueue_function_name}() {\n";
+
+            foreach ($matches[1] as $url) {
+                $handle = sanitize_title(basename($url, '.js')) . '-js';
+                $enqueue_code .= (strpos($url, 'http') === 0)
+                    ? "    wp_enqueue_script('{$handle}', '{$url}', array('jquery'), null, true);\n"
+                    : "    wp_enqueue_script('{$handle}', get_template_directory_uri() . '/{$url}', array('jquery'), null, true);\n";
+            }
+
+            $enqueue_code .= "}\nadd_action('wp_enqueue_scripts', '{$enqueue_function_name}');\n";
+
+            // ✅ Append the function at the bottom of functions.php
+            if (file_put_contents($functions_path, $enqueue_code, FILE_APPEND) === false) {
+                wp_send_json_error("Failed to append new function.");
+            }
         }
 
         // ✅ 5. Remove <script> tags, </body>, </html>, and comments
@@ -658,34 +775,152 @@ get_header(); ?>
         wp_send_json_success("Footer processed, scripts enqueued, empty lines removed, and content prepended successfully.");
     }
     //correct menu
-    public function ai_assistant_correct_menu() {
+
+    public function ai_assistant_detect_and_convert_menu() {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized access.");
         }
 
-        $menu_name = sanitize_text_field($_POST['menu_name']);
         $menu_html = stripslashes($_POST['menu_html']);
-        if (empty($menu_name) || empty($menu_html)) {
-            wp_send_json_error("Menu name or HTML content missing.");
+        if (empty($menu_html)) {
+            wp_send_json_error("❌ Menu HTML content missing.");
         }
 
-        // ✅ Get text-domain from options
-        $text_domain = get_option('ai_assistant_text_domain', 'ai_assistant');
+        $menu_name = sanitize_text_field($_POST['menu_name']);
+        if (empty($menu_name)) {
+            wp_send_json_error("❌ Menu name missing.");
+        }
 
-        // ✅ Detect if Bootstrap-based menu
-        $is_bootstrap = (strpos($menu_html, 'navbar') !== false || strpos($menu_html, 'dropdown') !== false);
+        $theme_dir = get_stylesheet_directory();
+        $menu_folder = $theme_dir . '/menu';
+        $navwalker_file = $menu_folder . '/bootstrap-navwalker.php';
+        $functions_file = $theme_dir . '/functions.php';
 
-        // ✅ Generate WordPress menu code snippet
-        $menu_code = $is_bootstrap ?
-            "<?php wp_nav_menu(['theme_location' => '{$menu_name}', 'menu_class' => 'navbar-nav me-auto mb-2 mb-lg-0', 'container' => false]); ?>" :
-            "<?php wp_nav_menu(['theme_location' => '{$menu_name}', 'menu_class' => 'menu', 'container' => false]); ?>";
+        // ✅ Extract classes from <nav> and <ul>
+        preg_match('/<nav[^>]*class=["\']([^"\']+)["\']/', $menu_html, $nav_classes);
+        preg_match('/<ul[^>]*class=["\']([^"\']+)["\']/', $menu_html, $ul_classes);
+        $nav_class = isset($nav_classes[1]) ? esc_attr($nav_classes[1]) : 'navbar navbar-expand-lg navbar-light bg-light';
+        $menu_class = isset($ul_classes[1]) ? esc_attr($ul_classes[1]) : 'navbar-nav';
 
-        // 🚀 Return the generated WordPress menu code
-        wp_send_json_success([
-            'menu_code' => $menu_code,
-            'message'   => "✅ WordPress menu code generated successfully!"
-        ]);
+        // ✅ Extract menu items
+        preg_match_all('/<li[^>]*>\s*<a[^>]*href=["\']([^"\']+)["\']>(.*?)<\/a>\s*<\/li>/i', $menu_html, $menu_items, PREG_SET_ORDER);
+
+        // ✅ Check if menu exists
+        $menu_exists = wp_get_nav_menu_object($menu_name);
+        if (!$menu_exists) {
+            // ✅ Create the menu if not exists
+            $menu_id = wp_create_nav_menu($menu_name);
+            if (is_wp_error($menu_id)) {
+                wp_send_json_error("❌ Failed to create menu.");
+            }
+
+            // ✅ Add menu items dynamically
+            foreach ($menu_items as $item) {
+                wp_update_nav_menu_item($menu_id, 0, [
+                    'menu-item-title' => esc_html($item[2]),
+                    'menu-item-url' => esc_url($item[1]),
+                    'menu-item-status' => 'publish',
+                ]);
+            }
+
+            // ✅ Register the menu location dynamically
+            register_nav_menus([
+                sanitize_title($menu_name) => esc_html($menu_name),
+            ]);
+        }
+
+        // ✅ Handle Bootstrap Menu
+        if (strpos($menu_html, 'navbar') !== false || strpos($menu_html, 'dropdown') !== false) {
+            // ✅ 1. Ensure "menu" folder exists
+            if (!file_exists($menu_folder)) {
+                mkdir($menu_folder, 0755, true);
+            }
+
+            // ✅ 2. Ensure "bootstrap-navwalker.php" exists
+            if (!file_exists($navwalker_file)) {
+                $navwalker_code = "<?php
+class WP_Bootstrap_Navwalker extends Walker_Nav_Menu {
+    function start_lvl( &\$output, \$depth = 0, \$args = null ) {
+        \$output .= \"<ul class='dropdown-menu'>\";
     }
+
+    function start_el( &\$output, \$item, \$depth = 0, \$args = null, \$id = 0 ) {
+        \$classes = empty(\$item->classes) ? [] : (array) \$item->classes;
+        \$class_names = join(' ', apply_filters('nav_menu_css_class', array_filter(\$classes), \$item, \$args));
+        \$output .= \"<li class='nav-item \". esc_attr(\$class_names) . \"'>\";
+
+        \$attributes = !empty(\$item->url) ? ' href=\"' . esc_attr(\$item->url) . '\"' : '';
+        \$item_output = \"<a class='nav-link'\" . \$attributes . \">\" . apply_filters('the_title', \$item->title, \$item->ID) . \"</a>\";
+        \$output .= \$item_output;
+    }
+
+    function end_lvl( &\$output, \$depth = 0, \$args = null ) {
+        \$output .= \"</ul>\";
+    }
+
+    function end_el( &\$output, \$item, \$depth = 0, \$args = null ) {
+        \$output .= \"</li>\";
+    }
+}";
+                file_put_contents($navwalker_file, $navwalker_code);
+            }
+
+            // ✅ 3. Include "bootstrap-navwalker.php" in functions.php
+            $functions_content = file_get_contents($functions_file);
+            $include_code = "require_once get_template_directory() . '/menu/bootstrap-navwalker.php';";
+
+            if (strpos($functions_content, "bootstrap-navwalker.php") === false) {
+                $functions_content = preg_replace('/<\?php\s*/', "<?php\n" . $include_code . "\n", $functions_content, 1);
+                file_put_contents($functions_file, $functions_content);
+            }
+
+            // ✅ 4. Generate Bootstrap `wp_nav_menu()`
+            $menu_code = "<?php wp_nav_menu([
+            'menu' => '{$menu_name}',
+            'menu_class' => '{$menu_class}',
+            'container' => 'nav',
+            'container_class' => '{$nav_class}',
+            'walker' => new WP_Bootstrap_Navwalker()
+        ]); ?>";
+
+            wp_send_json_success([
+                'menu_code' => $menu_code,
+                'message'   => "✅ Bootstrap menu converted successfully!"
+            ]);
+        }
+
+        // ✅ Handle Custom-Styled Menu
+        elseif (preg_match('/class=["\'].*?(menu-item|menu-link|dropdown-list).*?["\']/', $menu_html)) {
+            $menu_code = "<?php wp_nav_menu([
+            'menu' => '{$menu_name}',
+            'menu_class' => '{$menu_class}',
+            'container' => false
+        ]); ?>";
+
+            wp_send_json_success([
+                'menu_code' => $menu_code,
+                'message'   => "✅ Custom menu converted successfully!"
+            ]);
+        }
+
+        // ✅ Handle Default Basic Menu
+        else {
+            $menu_code = "<?php wp_nav_menu([
+            'menu' => '{$menu_name}',
+            'menu_class' => '{$menu_class}',
+            'container' => false
+        ]); ?>";
+
+            wp_send_json_success([
+                'menu_code' => $menu_code,
+                'message'   => "✅ Basic menu converted successfully!"
+            ]);
+        }
+    }
+
+
+
+
 
     // ✅ Fetch all theme files
     public function ai_assistant_get_theme_files() {

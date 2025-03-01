@@ -57,118 +57,106 @@ function list_theme_files($dir, $relative_path = '', $base_url = '?page=ai_assis
     </div>
 
     <!-- Tasks Box -->
-    <div class="postbox closed">
+    <div class="postbox closed" id="ai__task">
         <div class="postbox-header">
             <h2>Tasks</h2>
         </div>
         <div class="inside">
             <ul class="action__list task-list">
-                <li class="create_theme"><span class="open__child">Create theme</span>
-                    <div class="action__setting">
-                        <input type="text" name="theme_name" placeholder="Theme Name">
-                        <input type="text" name="theme_uri" placeholder="Theme URI">
-                        <input type="text" name="author" placeholder="Author">
-                        <input type="text" name="author_uri" placeholder="Author URI">
-                        <input type="text" name="text_domain" placeholder="Text domain(use underscore if space)">
-
-                        <?php ai_assistant_render_spark_button('create_theme'); ?>
-
-                    </div>
-                </li>
-                <li>
-                    <span class="open__child">Create Page</span>
-                    <div class="action__setting">
-                        <input type="text" name="page_name"
-                               placeholder="Page name"><?php ai_assistant_render_spark_button('create_page_and_template_file'); ?>
-                        <label>
-                            <input type="checkbox" name="create_page_template" checked> Create page template
-                        </label>
-
-                    </div>
-                </li>
-                <li>
-                    <span class="open__child">Correct Header</span>
-                    <div class="action__setting">
-                        <textarea name="correct_header" id="" cols="30" rows="10"></textarea>
-
-                        <?php ai_assistant_render_spark_button('correct_header'); ?>
-
-
-                    </div>
-                </li>
-                <li>
-                    <span class="open__child">Correct Footer</span>
-                    <div class="action__setting">
-                        <textarea name="correct_footer" id="" cols="30" rows="10"></textarea>
-                        <?php ai_assistant_render_spark_button('correct_footer'); ?>
-                    </div>
-                </li>
-                <li>
-                    <span class="open__child">Create Menu</span>
-                    <div class="action__setting">
-                        <input type="text" name="menu_name"
-                               placeholder="Menu name"><?php ai_assistant_render_spark_button('create_menu'); ?>
-
-
-                    </div>
-                </li>
-                <li>
-                    <span class="open__child">Solve Menu</span>
-                    <div class="action__setting">
-
-
-                        <?php
-                        $menus = wp_get_nav_menus();
-                        if (!empty($menus)) {
-                            echo '<select name="menu__name">';
-                            foreach ($menus as $menu) {
-                                echo '<option value="' . esc_attr($menu->slug) . '">' . esc_html($menu->name) . '</option>';
-                            }
-                            echo '</select>';
-                        } else {
-                            echo '<p>No menus available.</p>';
-                        }
-                        ?>
-
-                        <textarea id="menu-editor" rows="10" placeholder="Paste or write menu HTML here..."></textarea>
-                        <?php ai_assistant_render_spark_button('correct_menu'); ?>
-
-
-                    </div>
-                </li>
-                <li>
-                    <span class="open__child">Create Custom Post Type</span>
-                    <div class="action__setting">
-                        <input type="text" name="cpt_slug" placeholder="Post Type Slug">
-                        <input type="text" name="plural__label" placeholder="Plural Label">
-                        <input type="text" name="singular__label" placeholder="Singular Label">
-
-                        <?php ai_assistant_render_spark_button('create_custom_post_type'); ?>
-
-                        <label>
-                            <input type="checkbox" name="cpt__template" checked> Create template
-                        </label>
-
-                        <h3>Supports</h3>
-                        <div style="display: flex;flex-direction: column; gap: 10px;">
-                            <input type="text" id="dashi_icon_field" name="dashi_icon" placeholder="Click to select icon" readonly>
-                            <button type="button" id="open-dashicon-picker" class="button button-primary">Choose Dashicon</button>
-
-                        </div>
-
-                        <label>
-                            <input type="checkbox" name="cpt__editor" checked> Editor
-                        </label>
-                        <label>
-                            <input type="checkbox" name="cpt__featured_image" checked> Featured Image
-                        </label>
-                    </div>
-
-                </li>
+                <?php include plugin_dir_path(__FILE__) . '../partials/partial-tasks.php'; ?>
 
             </ul>
         </div>
     </div>
+
+    <div class="postbox custom-field-box closed">
+        <div class="postbox-header">
+            <h2>Custom Fields</h2>
+        </div>
+        <div class="inside">
+            <!-- Tab Navigation -->
+            <ul class="custom-field-tabs">
+                <li class="active" data-tab="create-field">Create</li>
+                <li data-tab="apply-field">Apply</li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content">
+                <!-- Create Custom Field -->
+                <div id="create-field" class="tab-pane active">
+                    <div class="custom-toolbar">
+
+                        <button class="custom-toolbar-btn" data-shortcode="text">Text</button>
+                        <button class="custom-toolbar-btn" data-shortcode="textarea">Text Area</button>
+                        <button class="custom-toolbar-btn" data-shortcode="image">Image</button>
+                        <button class="custom-toolbar-btn" data-shortcode="wysiwyg">WYSIWYG</button>
+                        <button class="custom-toolbar-btn" data-shortcode="number">Number</button>
+                        <button class="custom-toolbar-btn" data-shortcode="url">URL</button>
+                        <button class="custom-toolbar-btn" data-shortcode="email">Email</button>
+                        <button class="custom-toolbar-btn" data-shortcode="tel">Tel</button>
+
+                        <div class="d-full">
+                            <button class="custom-toolbar-btn" data-shortcode="tab">Tab</button>
+                            <button class="custom-toolbar-btn" data-shortcode="checkbox">Checkboxes</button>
+                            <button class="custom-toolbar-btn" data-shortcode="radio">Radio Buttons</button>
+                            <br>
+
+                        </div>
+                        <div class="d-full">
+                            <button class="custom-toobar-option" data-shortcode="options">Options</button>
+                        </div>
+
+
+                    </div>
+
+                    <div class="custom-editor">
+                        <textarea id="custom-form-editor" spellcheck="false" placeholder="Enter your custom field template here..."></textarea>
+                        <div class="acf-location-container">
+                            <label>Show this field group if</label>
+                            <div class="acf-location-row">
+                                <!-- First Dropdown: Condition Type -->
+                                <select class="acf-location-param">
+                                    <option value="post_type">Post Type</option>
+                                    <option value="page">Page</option>
+                                    <option value="page_template">Page Template</option>
+                                    <option value="taxonomy">Taxonomy</option>
+                                </select>
+
+                                <!-- Second Dropdown: Operator -->
+                                <select class="acf-location-operator">
+                                    <option value="==">is equal to</option>
+                                    <option value="!=">is not equal to</option>
+                                </select>
+
+                                <!-- Third Dropdown: Dynamic Values (Initially Empty) -->
+
+                                <select class="acf-location-value">
+                                    <option value="">Select a value</option>
+
+                                </select>
+                            </div>
+
+                        </div>
+
+                        <button id="create-json-btn" style="margin-top: 10px;">Create JSON</button>
+                    </div>
+                </div>
+
+                <!-- Apply Custom Field -->
+                <div id="apply-field" class="tab-pane">
+                    <h3>Apply Custom Fields</h3>
+                    <label>Select Field:</label>
+                    <select>
+                        <option value="none">-- Select a field --</option>
+                        <option value="field_1">Custom Field 1</option>
+                        <option value="field_2">Custom Field 2</option>
+                    </select>
+                    <button class="button button-secondary">Apply Field</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <div class="postbox closed">
         <div class="postbox-header">

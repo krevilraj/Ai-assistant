@@ -491,31 +491,8 @@ jQuery(document).ready(function ($) {
     populateThemeDetails(); // ✅ Load on page load
 
 
-    let selectedTextBeforeClick = "";
-    let selectionStartIndex = 0;
-    let selectionEndIndex = 0;
 
-// 🌟 Track the text selection inside the textarea
-//     document.getElementById('menu-editor').addEventListener('mouseup', function () {
-//         selectionStartIndex = this.selectionStart;
-//         selectionEndIndex = this.selectionEnd;
-//         selectedTextBeforeClick = this.value.substring(selectionStartIndex, selectionEndIndex);
-//         console.log("🔍 Selected text:", selectedTextBeforeClick);
-//     });
 
-// 🌟 Replace the selected text after AJAX response
-    function replaceSelectedTextInTextarea(newText) {
-        const textarea = document.getElementById('menu-editor');
-        const currentContent = textarea.value;
-
-        const updatedContent = currentContent.substring(0, selectionStartIndex) +
-            newText +
-            currentContent.substring(selectionEndIndex);
-
-        textarea.value = updatedContent;
-        textarea.focus();
-        console.log("✅ Text replaced successfully!");
-    }
 
     // ✅ Create theme and save data
 
@@ -531,6 +508,7 @@ jQuery(document).ready(function ($) {
         create_custom_post_type: handleCreateCPT,
         create_user_type: handleCreateUserType,
         remove_user_type: handleDeleteUserType,
+        change__admin_page_link: handleAdminUrl,
         // ⚡️ Add new actions here without modifying main event handler
     };
 
@@ -648,20 +626,57 @@ jQuery(document).ready(function ($) {
     }
 
     // handle correction of menu
+
+
+    let selectedMenuHtml = "";
+    let selectionStart = 0;
+    let selectionEnd = 0;
+
+    // ✅ Track selected text in the textarea
+    $("#theme-file-editor").on("mouseup keyup", function () {
+        selectionStart = this.selectionStart;
+        selectionEnd = this.selectionEnd;
+        selectedMenuHtml = this.value.substring(selectionStart, selectionEnd);
+    });
+
+    // ✅ Function to replace selected text in textarea
+    function replaceSelectedText(newText) {
+        const textarea = document.getElementById('theme-file-editor');
+        const content = textarea.value;
+
+        // ✅ Replace only the selected text
+        const updatedContent = content.substring(0, selectionStart) +
+            newText +
+            content.substring(selectionEnd);
+
+        textarea.value = updatedContent;
+        textarea.focus();
+    }
+
     function handleCorrectMenu(_this, $) {
         const parentLi = _this.closest('li');
         const menuName = parentLi.find('[name="menu__name"]').val().trim();
-        const editorContent = $("#menu-editor").val().trim();
 
         if (!menuName) return showAlert("❌ Please select a menu.", "danger");
-        if (!selectedTextBeforeClick) return showAlert("❌ Please select the menu HTML in the textarea before clicking.", "danger");
+        if (!selectedMenuHtml) {
+            showAlert("❌ Please select the menu HTML in the editor before clicking.", "danger");
+            return;
+        }
 
+        // ✅ Send selected menu to AJAX
         sendAjax({
             action: "ai_assistant_correct_menu",
             menu_name: menuName,
-            menu_html: selectedTextBeforeClick
+            menu_html: selectedMenuHtml
         }, _this, function (response) {
-            replaceSelectedTextInTextarea(response.data.menu_code);
+            if (response.success) {
+                showAlert(response.data.message, "success");
+
+                // ✅ Replace selected menu HTML with the WordPress menu code
+                replaceSelectedText(response.data.menu_code);
+            } else {
+                showAlert(response.data, "danger");
+            }
         });
     }
 
@@ -711,6 +726,24 @@ jQuery(document).ready(function ($) {
         const userType = parentLi.find('input[name="remove_user_type"]:text').val().trim();
         sendAjax({action: "ai_assistant_delete_user_role", role: userType}, _this);
     }
+
+    function handleAdminUrl(_this, $) {
+        const parentLi = _this.closest('li');
+        const adminLink = parentLi.find('input[name="admin__page_link"]').val().trim();
+
+        if (!adminLink) {
+            showAlert("❌ Admin Page Link is required.", "danger");
+            return;
+        }
+
+        // Construct the PHP echo statement dynamically
+        const phpCode = `<?php echo admin_url('${adminLink}'); ?>`;
+
+        prompt("Copy to clipboard: Ctrl+C, Enter", phpCode);
+        // Show the PHP code in an alert
+        showAlert(`✅ Generated PHP Code:\n${phpCode}`, "success");
+    }
+
 
 
 });

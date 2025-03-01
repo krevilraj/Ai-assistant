@@ -12,7 +12,6 @@
             <button class="custom-tab active" data-tab="basic_setting">Basic Setting</button>
             <button class="custom-tab " data-tab="create_acf">Create ACF</button>
             <button class="custom-tab" data-tab="apply_acf">Apply ACF</button>
-            <button class="custom-tab" data-tab="static_to_dynamic">Static to Dynamic</button>
             <button class="custom-tab" data-tab="additional_settings">Additional Settings</button>
         </div>
 
@@ -92,68 +91,10 @@
 
             </div>
         </div>
-        <div id="static_to_dynamic" class="custom-tab-content">
-            <h2>Static to Dynamic Process</h2>
-            <ul class="action__list">
-                <li class="create_theme"><span class="open__child">Create theme</span>
-                    <div class="action__setting">
-                        <input type="text" name="theme_name" placeholder="Theme Name">
-                        <input type="text" name="theme_uri" placeholder="Theme URI">
-                        <input type="text" name="author" placeholder="Author">
-                        <input type="text" name="author_uri" placeholder="Author URI">
-                        <input type="text" name="text_domain" placeholder="Text domain(use underscore if space)">
-
-                        <?php ai_assistant_render_spark_button('create_theme'); ?>
-
-                    </div>
-                </li>
-                <li>
-                    <span class="open__child">Create Page</span>
-                    <div class="action__setting">
-                        <input type="text" name="page_name"
-                               placeholder="Page name"><?php ai_assistant_render_spark_button('create_page_and_template_file'); ?>
-                        <label>
-                            <input type="checkbox" name="create_page_template" checked> Create page template
-                        </label>
-
-                    </div>
-                </li>
-
-                <li>
-                    <span class="open__child">Correct Header</span>
-                    <div class="action__setting">
-                        <textarea name="correct_header" id="" cols="30" rows="10"></textarea>
-
-                        <?php ai_assistant_render_spark_button('correct_header'); ?>
-
-
-                    </div>
-                </li>
-                <li>
-                    <span class="open__child">Correct Footer</span>
-                    <div class="action__setting">
-                        <textarea name="correct_footer" id="" cols="30" rows="10"></textarea>
-                        <?php ai_assistant_render_spark_button('correct_footer'); ?>
-                    </div>
-                </li>
-
-                <li>
-                    <span class="open__child">Create Menu</span>
-                    <div class="action__setting">
-                        <input type="text" name="menu_name"
-                               placeholder="Menu name"><?php ai_assistant_render_spark_button('create_menu'); ?>
-
-
-                    </div>
-                </li>
-
-
-
-
-            </ul>
-        </div>
         <div id="additional_settings" class="custom-tab-content">
-            <textarea id="settings-editor" placeholder="Enter Additional Settings..."></textarea>
+            <ul class="action__list">
+                <?php include plugin_dir_path(__FILE__) . '../partials/partial-additional_setting.php'; ?>
+            </ul>
         </div>
     </div>
 </div>
