@@ -65,9 +65,7 @@
                                     <button class="custom-toolbar-btn1" data-shortcode="checkbox">Checkboxes</button>
                                     <button class="custom-toolbar-btn1" data-shortcode="radio">Radio Buttons</button>
                                 </div>
-                                <div class="d-full">
-                                    <button class="custom-toobar-option1" data-shortcode="options">Options</button>
-                                </div>
+
                             </div>
                             <div class="field__acf_wrapper">
                                 <textarea name="field__rep_acf" id="field__rep_acf" cols="30" rows="6"></textarea>

@@ -321,4 +321,18 @@
     background: #fff;
     display: none;
 }
-
+.after__subfield{
+    display:flex;
+    gap:10px;
+}
+.after__subfield button{
+    padding: 5px 10px;
+    font-size: 12px;
+    background: #f1f1f1;
+    border: 1px solid #ddd;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.after__subfield button:hover{
+    background: #ddd;
+}

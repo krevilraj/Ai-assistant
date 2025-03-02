@@ -118,9 +118,43 @@ jQuery(document).ready(function ($) {
             replaceSelectedTextInEditor(phpRepeaterCode);
         }
 
+        // ✅ Extract all `name` attributes inside the repeater (EXCLUDE REPEATER NAME)
+        var fieldMatches = [...sourceValue.matchAll(/\[([a-zA-Z0-9_-]+)\s+name="([^"]+)"/g)];
+        var subFields = [];
+
+        fieldMatches.forEach((match, index) => {
+            if (index === 0 && match[1] === "repeater") return; // ✅ Skip first match (Repeater)
+
+            let fieldName = match[2].trim();
+            let fieldSlug = fieldName.toLowerCase()
+                .replace(/\s+/g, "_")  // Replace spaces with underscores
+                .replace(/[^a-z0-9_]/g, ""); // Remove invalid characters
+
+            subFields.push({ name: fieldName, slug: fieldSlug });
+        });
+
+        // ✅ Create buttons dynamically inside `.after__subfield`
+        var buttonContainer = $(".after__subfield").empty(); // Clear previous buttons
+        subFields.forEach(function (field) {
+            var subFieldButton = $("<button>")
+                .text(field.name)
+                .attr("data-slug", field.slug)
+                .addClass("sub-field-btn")
+                .on("click", function () {
+                    var phpSubFieldCode = `<?php the_sub_field('${field.slug}'); ?>`;
+                    if (typeof replaceSelectedTextInEditor === "function") {
+                        replaceSelectedTextInEditor(phpSubFieldCode);
+                    }
+                });
+
+            buttonContainer.append(subFieldButton);
+        });
+
         // ✅ Clear the source textarea after inserting
         sourceTextarea.value = "";
     });
+
+
 
 
 
