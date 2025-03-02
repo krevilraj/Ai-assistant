@@ -288,7 +288,37 @@
     margin-bottom:10px;
 }
 .field__acf_wrapper button{
-    width:10%;
+    width:25%;
     padding:10px;
+}
+
+.acf-tab-container {
+    margin-bottom: 20px;
+}
+
+.acf-tabs {
+    display: flex;
+    border-bottom: 2px solid #ddd;
+}
+
+.acf-tab {
+    background: #f4f4f4;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+}
+
+.acf-tab.active {
+    background: #0073aa;
+    border-bottom: 2px solid #ffffff;
+    color: #fff;
+}
+
+.acf-tab-content {
+    padding: 15px;
+    border: 2px solid #ddd;
+    background: #fff;
+    display: none;
 }
 

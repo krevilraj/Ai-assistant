@@ -9,37 +9,79 @@
     <div class="tab-content">
         <!-- Create Custom Field -->
         <div id="create-field" class="tab-pane active">
-            <div class="custom-toolbar">
 
-                <button class="custom-toolbar-btn" data-shortcode="text">Text</button>
-                <button class="custom-toolbar-btn" data-shortcode="textarea">Text Area</button>
-                <button class="custom-toolbar-btn" data-shortcode="image">Image</button>
-                <button class="custom-toolbar-btn" data-shortcode="wysiwyg">WYSIWYG</button>
-                <button class="custom-toolbar-btn" data-shortcode="number">Number</button>
-                <button class="custom-toolbar-btn" data-shortcode="url">URL</button>
-                <button class="custom-toolbar-btn" data-shortcode="email">Email</button>
-                <button class="custom-toolbar-btn" data-shortcode="tel">Tel</button>
-
-                <div class="d-full">
-                    <button class="custom-toolbar-btn" data-shortcode="tab">Tab</button>
-                    <button class="custom-toolbar-btn" data-shortcode="checkbox">Checkboxes</button>
-                    <button class="custom-toolbar-btn" data-shortcode="radio">Radio Buttons</button>
-                    <br>
-
-                </div>
-                <div class="d-full">
-                    <button class="custom-toobar-option" data-shortcode="options">Options</button>
-                </div>
-
-
-            </div>
 
             <div class="custom-editor">
-                <div class="field__acf_wrapper">
+                <div class="acf-tab-container">
+                    <div class="acf-tabs">
+                        <button class="acf-tab" data-tab="normal_field">Normal Field</button>
+                        <button class="acf-tab" data-tab="repeater_field">Repeater Field</button>
+                    </div>
 
-                    <textarea name="field__acf" id="field__acf" cols="30" rows="1"></textarea>
-                    <button id="add__field_to_textarea">Add</button>
+                    <div class="acf-tab-contents">
+                        <!-- Normal Field -->
+                        <div id="normal_field" class="acf-tab-content">
+                            <div class="custom-toolbar">
+                                <button class="custom-toolbar-btn" data-shortcode="text">Text</button>
+                                <button class="custom-toolbar-btn" data-shortcode="textarea">Text Area</button>
+                                <button class="custom-toolbar-btn" data-shortcode="image">Image</button>
+                                <button class="custom-toolbar-btn" data-shortcode="wysiwyg">WYSIWYG</button>
+                                <button class="custom-toolbar-btn" data-shortcode="number">Number</button>
+                                <button class="custom-toolbar-btn" data-shortcode="url">URL</button>
+                                <button class="custom-toolbar-btn" data-shortcode="email">Email</button>
+                                <button class="custom-toolbar-btn" data-shortcode="tel">Tel</button>
+                                <div class="d-full">
+                                    <button class="custom-toolbar-btn" data-shortcode="tab">Tab</button>
+                                    <button class="custom-toolbar-btn" data-shortcode="checkbox">Checkboxes</button>
+                                    <button class="custom-toolbar-btn" data-shortcode="radio">Radio Buttons</button>
+                                </div>
+                                <div class="d-full">
+                                    <button class="custom-toobar-option" data-shortcode="options">Options</button>
+                                </div>
+                            </div>
+                            <div class="field__acf_wrapper">
+                                <textarea name="field__acf" id="field__acf" cols="30" rows="1"></textarea>
+                                <button id="add__field_to_textarea">Add Field</button>
+                            </div>
+                        </div>
+
+                        <!-- Repeater Field -->
+                        <div id="repeater_field" class="acf-tab-content" style="display: none;">
+                            <div class="custom-toolbar">
+                                <div class="d-full">
+                                    <button class="custom-toolbar-btn1" data-shortcode="repeater">Repeater</button><span style="margin-left: 10px;">First click on the repeater then other sub field</span>
+                                </div>
+
+                                <button class="custom-toolbar-btn1" data-shortcode="text">Text</button>
+                                <button class="custom-toolbar-btn1" data-shortcode="textarea">Text Area</button>
+                                <button class="custom-toolbar-btn1" data-shortcode="image">Image</button>
+                                <button class="custom-toolbar-btn1" data-shortcode="wysiwyg">WYSIWYG</button>
+                                <button class="custom-toolbar-btn1" data-shortcode="number">Number</button>
+                                <button class="custom-toolbar-btn1" data-shortcode="url">URL</button>
+                                <button class="custom-toolbar-btn1" data-shortcode="email">Email</button>
+                                <button class="custom-toolbar-btn1" data-shortcode="tel">Tel</button>
+                                <div class="d-full">
+                                    <button class="custom-toolbar-btn1" data-shortcode="tab">Tab</button>
+                                    <button class="custom-toolbar-btn1" data-shortcode="checkbox">Checkboxes</button>
+                                    <button class="custom-toolbar-btn1" data-shortcode="radio">Radio Buttons</button>
+                                </div>
+                                <div class="d-full">
+                                    <button class="custom-toobar-option1" data-shortcode="options">Options</button>
+                                </div>
+                            </div>
+                            <div class="field__acf_wrapper">
+                                <textarea name="field__rep_acf" id="field__rep_acf" cols="30" rows="6"></textarea>
+                                <button id="add__rep_field_to_textarea">Add Sub Field</button>
+                            </div>
+                            <div class="after__subfield">
+
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
+
+
                 <textarea id="custom-form-editor" spellcheck="false"
                           placeholder="Enter your custom field template here..."></textarea>
                 <div class="acf-location-container">

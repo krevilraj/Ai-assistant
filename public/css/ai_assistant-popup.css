@@ -73,7 +73,7 @@
     gap: 5px;
 }
 
-.custom-toolbar-btn,.custom-toobar-option {
+.custom-toolbar-btn,.custom-toobar-option, .custom-toolbar-btn1,.custom-toobar-option1 {
     padding: 5px 10px;
     font-size: 12px;
     background: #f1f1f1;
@@ -82,7 +82,7 @@
     transition: 0.2s;
 }
 
-.custom-toolbar-btn:hover, .custom-toobar-option:hover {
+.custom-toolbar-btn:hover, .custom-toobar-option:hover, .custom-toolbar-btn1:hover, .custom-toobar-option1:hover {
     background: #ddd;
 }
 

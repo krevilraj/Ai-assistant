@@ -258,7 +258,6 @@ jQuery(document).ready(function ($) {
     });
 
 
-
     if (window.location.href.includes("admin.php?page=ai_assistant-theme-editor&file=header.php&needcorrection=true")) {
 
         // ✅ Show message
@@ -304,6 +303,24 @@ jQuery(document).ready(function ($) {
         parentBox.find(".tab-pane").removeClass("active");
         parentBox.find("#" + tabId).addClass("active");
     });
+
+
+    //tab view for repeate in acf
+    $(".acf-tab").on("click", function () {
+        var tabId = $(this).data("tab");
+
+        // Remove active class from all tabs and add to the clicked one
+        $(".acf-tab").removeClass("active");
+        $(this).addClass("active");
+
+        // Hide all tab content and show the selected one
+        $(".acf-tab-content").hide();
+        $("#" + tabId).show();
+    });
+
+    // ✅ Open the first tab by default
+    $(".acf-tab:first").addClass("active");
+    $(".acf-tab-content:first").show();
 
 
 });

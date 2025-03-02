@@ -78,6 +78,111 @@ jQuery(document).ready(function ($) {
 jQuery(document).ready(function ($) {
     let lastCursorPos = 0;
 
+    $("#add__rep_field_to_textarea").on("click", function () {
+        var sourceTextarea = $("#field__rep_acf")[0];
+        var targetTextarea = $("#custom-form-editor")[0];
+
+        // ✅ Get the source textarea value
+        var sourceValue = sourceTextarea.value.trim();
+        if (!sourceValue) {
+            showAlert("❌ No content in the field editor!", "danger");
+            return;
+        }
+
+        // ✅ Append sourceTextarea content to targetTextarea
+        targetTextarea.value += (targetTextarea.value ? "\n" : "") + sourceValue;
+
+        // ✅ Extract the repeater name
+        var repeaterMatch = sourceValue.match(/\[repeater\s+name="([^"]+)"\]/);
+        if (!repeaterMatch || !repeaterMatch[1]) {
+            showAlert("❌ No 'repeater' name attribute found!", "danger");
+            return;
+        }
+
+        var repeaterName = repeaterMatch[1].trim();
+
+        // ✅ Convert repeater name to slug
+        var slug = repeaterName.toLowerCase()
+            .replace(/\s+/g, "_")  // Replace spaces with underscores
+            .replace(/[^a-z0-9_]/g, ""); // Remove invalid characters
+
+        // ✅ Construct the PHP repeater loop template
+        var phpRepeaterCode = `<?php if (have_rows('${slug}')): $i = 0; ?>\n` +
+            `    <?php while (have_rows('${slug}')) : the_row(); ?>\n` +
+            `        ${window.selectedText ? window.selectedText : ""}\n` +
+            `    <?php $i++; endwhile; ?>\n` +
+            `<?php endif; ?>`;
+
+        // ✅ Replace selected text in the editor with PHP repeater loop
+        if (typeof replaceSelectedTextInEditor === "function" && window.selectedText) {
+            replaceSelectedTextInEditor(phpRepeaterCode);
+        }
+
+        // ✅ Clear the source textarea after inserting
+        sourceTextarea.value = "";
+    });
+
+
+
+    // Update the textarea with custom behavior for checkbox and radio buttons
+    $(".custom-toolbar-btn1").on("click", function () {
+        var shortcodeType = $(this).attr("data-shortcode");
+        var textarea = $("#field__rep_acf")[0];
+        var content = textarea.value.trim();
+        var shortcode = "";
+
+        // ✅ Check if Repeater is already present
+        var hasRepeater = content.includes("[/repeater]");
+
+        if (shortcodeType === "repeater") {
+            if (hasRepeater) {
+                showAlert("❌ Repeater is already there, you need to add a subfield.", "danger");
+                return;
+            }
+
+            // ✅ Add repeater block with cursor inside name=""
+            shortcode = "[repeater name=\"\"]\n\n[/repeater]";
+            textarea.value += (textarea.value ? "\n" : "") + shortcode;
+
+            // ✅ Move cursor inside `name=""`
+            let cursorPosition = textarea.value.indexOf(`name=""`) + 6;
+            textarea.setSelectionRange(cursorPosition, cursorPosition);
+            textarea.focus();
+
+        } else {
+            // ✅ If not repeater, ensure Repeater exists
+            if (!hasRepeater) {
+                showAlert("❌ First, click on the 'Repeater' button to create a repeater field.", "danger");
+                return;
+            }
+
+            // ✅ Create shortcode
+            if (shortcodeType === "checkbox" || shortcodeType === "radio") {
+                shortcode = `[${shortcodeType} name="" option=""]`;
+            } else {
+                shortcode = `[${shortcodeType} name=""${window.selectedText ? ` value="${window.selectedText}"` : ""}]`;
+            }
+
+            // ✅ Insert shortcode inside the repeater block
+            let repeaterStart = content.indexOf("[repeater");
+            let repeaterEnd = content.indexOf("[/repeater]");
+
+            if (repeaterStart !== -1 && repeaterEnd !== -1) {
+                let before = content.substring(0, repeaterEnd).trim();
+                let after = content.substring(repeaterEnd).trim();
+
+                textarea.value = `${before}\n${shortcode}\n${after}`;
+
+                // ✅ Move cursor inside `name=""`
+                let cursorPosition = textarea.value.indexOf(`name=""`, repeaterStart) + 6;
+                textarea.setSelectionRange(cursorPosition, cursorPosition);
+                textarea.focus();
+            }
+        }
+    });
+
+
+
     // Update the textarea with custom behavior for checkbox and radio buttons
     $(".custom-toolbar-btn").on("click", async function () {
         var shortcodeType = $(this).attr("data-shortcode");
@@ -204,24 +309,61 @@ jQuery(document).ready(function ($) {
     $("#create-json-btn").on("click", function () {
         var group_field = $("#group__field");
         if (!group_field.val().trim()) {
-            showAlert("No group field name avilable",'danger');
+            showAlert("No group field name available", "danger");
             return;
         }
         var textareaContent = $("#custom-form-editor").val().trim();
         if (!textareaContent) {
-            showAlert("No content available to create JSON.",'danger');
+            showAlert("No content available to create JSON.", "danger");
             return;
         }
 
         var fields = [];
         var lines = textareaContent.split("\n");
+        var repeaterStack = []; // Stack to track nested repeaters
 
         lines.forEach(function (line) {
-            // ✅ Updated regex to properly capture HTML except `<script>` tags
+            // ✅ Check for repeater start
+            var repeaterMatch = line.match(/\[repeater\s+name="([^"]+)"\]/);
+            if (repeaterMatch) {
+                var repeaterName = repeaterMatch[1].trim();
+                var repeaterSlug = repeaterName.toLowerCase()
+                    .replace(/\s+/g, "_")  // Replace spaces with underscores
+                    .replace(/[^a-z0-9_]/g, ""); // Remove invalid characters
+
+                // Push new repeater to stack
+                repeaterStack.push({
+                    key: "field_" + repeaterSlug,
+                    label: repeaterName,
+                    name: repeaterSlug,
+                    type: "repeater",
+                    sub_fields: [] // Store subfields inside repeater
+                });
+
+                return; // Skip further processing for this line
+            }
+
+            // ✅ Check for repeater end
+            if (line.match(/\[\/repeater\]/)) {
+                if (repeaterStack.length > 0) {
+                    // Pop the last repeater and push it to fields or its parent repeater
+                    var completedRepeater = repeaterStack.pop();
+                    if (repeaterStack.length > 0) {
+                        // If there's a parent repeater, push it inside the sub_fields array
+                        repeaterStack[repeaterStack.length - 1].sub_fields.push(completedRepeater);
+                    } else {
+                        // Otherwise, add it to the main fields list
+                        fields.push(completedRepeater);
+                    }
+                }
+                return;
+            }
+
+            // ✅ Match normal fields inside or outside repeaters
             var match = line.match(/\[([a-zA-Z0-9_-]+)\s+name="([^"]+)"(?:\s+value="((?:(?!<\/?script).)*)")?(?:\s+option="([^"]*)")?\]/);
 
             if (match) {
-                var type = match[1];  // Field type (e.g., text, textarea, checkbox)
+                var type = match[1];  // Field type (e.g., text, textarea, checkbox, image)
                 var name = match[2];  // Field name (label)
                 var value = match[3] ? match[3].trim() : ""; // Preserve HTML in value
                 var optionsRaw = match[4] || "";
@@ -238,6 +380,11 @@ jQuery(document).ready(function ($) {
                     default_value: value
                 };
 
+                // ✅ Ensure image fields return an image URL
+                if (type === "image") {
+                    field.return_format = "url"; // Set return type to image URL
+                }
+
                 // ✅ Handle options for checkbox and radio
                 if ((type === "checkbox" || type === "radio") && optionsRaw) {
                     field.choices = optionsRaw.split("|").reduce(function (acc, option) {
@@ -249,12 +396,17 @@ jQuery(document).ready(function ($) {
                     }, {});
                 }
 
-                fields.push(field);
+                // ✅ If inside a repeater, add to sub_fields of the last repeater in stack
+                if (repeaterStack.length > 0) {
+                    repeaterStack[repeaterStack.length - 1].sub_fields.push(field);
+                } else {
+                    fields.push(field);
+                }
             }
         });
 
         if (fields.length === 0) {
-            alert("No valid fields found.");
+            showAlert("No valid fields found.","danger");
             return;
         }
 
@@ -263,7 +415,7 @@ jQuery(document).ready(function ($) {
         var selectedValue = $(".acf-location-value").val();
 
         if (!selectedParam || !selectedValue) {
-            alert("Please select location conditions.");
+            showAlert("Please select location conditions.","danger");
             return;
         }
 
@@ -290,14 +442,13 @@ jQuery(document).ready(function ($) {
                 location_data: JSON.stringify(locationData)
             },
             success: function (response) {
-                alert(response.data);
+                showAlert(response.data,"success");
             },
             error: function () {
-                alert("Failed to save JSON.");
+                showAlert("Failed to save JSON.","danger");
             }
         });
     });
-
 
 });
 
@@ -845,7 +996,7 @@ jQuery(document).ready(function ($) {
         // ✅ Track selection globally (Fix missing last character issue)
         editor.on("beforeSelectionChange", function (instance, obj) {
             let selections = obj.ranges;
-            console.log("🔍 Selection Event Triggered:", selections);
+
 
             if (selections.length > 0) {
                 window.selectionStart = selections[0].anchor.ch;
@@ -854,9 +1005,6 @@ jQuery(document).ready(function ($) {
                 // ✅ Delay retrieving selected text to ensure full selection
                 setTimeout(() => {
                     window.selectedText = editor.getSelection();
-                    console.log("📌 Selection Start:", window.selectionStart);
-                    console.log("📌 Selection End:", window.selectionEnd);
-                    console.log("📌 Selected Text:", window.selectedText);
                 }, 10); // Small delay to fix missing last character
             }
         });
