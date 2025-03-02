@@ -101,6 +101,14 @@ class AI_Assistant_Admin {
         wp_enqueue_script( $this->plugin_name . '-popup', plugin_dir_url(dirname(__FILE__)) . 'public/js/ai_assistant-popup.js', array( 'jquery' ), $this->version, false );
         // Localize script to pass ajaxurl to JavaScript
         wp_localize_script( $this->plugin_name, 'ajax_object', array( 'ajax_url' => admin_url( 'admin-ajax.php' ) ) );
+
+        // Load WordPress CodeMirror library
+        wp_enqueue_script('code-editor');
+        wp_enqueue_style('code-editor');
+        wp_enqueue_script('jquery');
+
+        // Localize script for JS usage
+        wp_add_inline_script('code-editor', 'jQuery(document).ready(function($) { aiAssistantInitEditor(); });');
 	}
 
 
@@ -230,6 +238,7 @@ class AI_Assistant_Admin {
     public function add_custom_field_popup() {
         include plugin_dir_path(__FILE__) . 'partials/ai_assistant-popup.php';
     }
+
 
 
 

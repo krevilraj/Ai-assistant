@@ -654,10 +654,15 @@ jQuery(document).ready(function ($) {
     }
 
     function handleCorrectMenu(_this, $) {
+        console.log(window.selectedText); // ✅ Now using global selectedText
         const parentLi = _this.closest('li');
         const menuName = parentLi.find('[name="menu__name"]').val().trim();
 
         if (!menuName) return showAlert("❌ Please select a menu.", "danger");
+
+        // ✅ Ensure the selection from CodeMirror is used
+        let selectedMenuHtml = typeof window.selectedText !== "undefined" ? window.selectedText.trim() : "";
+
         if (!selectedMenuHtml) {
             showAlert("❌ Please select the menu HTML in the editor before clicking.", "danger");
             return;
@@ -673,12 +678,18 @@ jQuery(document).ready(function ($) {
                 showAlert(response.data.message, "success");
 
                 // ✅ Replace selected menu HTML with the WordPress menu code
-                replaceSelectedText(response.data.menu_code);
+                if (typeof replaceSelectedTextInEditor === "function") {
+                    replaceSelectedTextInEditor(response.data.menu_code);
+                } else {
+                    console.error("❌ replaceSelectedTextInEditor function not found.");
+                }
             } else {
                 showAlert(response.data, "danger");
             }
         });
     }
+
+
 
     // 🌟 🚀 🌟 Handle CPT Creation
     function handleCreateCPT(_this, $) {
@@ -743,6 +754,67 @@ jQuery(document).ready(function ($) {
         // Show the PHP code in an alert
         showAlert(`✅ Generated PHP Code:\n${phpCode}`, "success");
     }
+
+
+
+    // 🔹 Define global variables for selection tracking
+    window.selectionStart = 0;
+    window.selectionEnd = 0;
+    window.selectedText = "";
+
+    window.aiAssistantInitEditor = function () {
+        if (typeof wp === 'undefined' || typeof wp.CodeMirror === 'undefined') {
+            console.error("❌ CodeMirror not loaded!");
+            return;
+        }
+
+        var editor = wp.CodeMirror.fromTextArea(document.getElementById("theme-file-editor"), {
+            mode: "php",
+            lineNumbers: true,
+            lineWrapping: true,
+            indentUnit: 4,
+            tabSize: 4,
+            theme: "default",
+            matchBrackets: true,
+            autoCloseBrackets: true,
+            styleActiveLine: true
+        });
+
+        // ✅ Set custom height
+        editor.setSize("100%", "1000px");
+
+        // ✅ Remove 'button-disabled' when content changes
+        editor.on("change", function () {
+            $("#file_save").removeClass("button-disabled");
+            $("#file_save").text("Save");
+        });
+
+        // ✅ Track selection globally
+        editor.on("beforeSelectionChange", function (instance, obj) {
+            let selections = obj.ranges;
+            console.log("🔍 Selection Event Triggered:", selections);
+
+            if (selections.length > 0) {
+                window.selectionStart = selections[0].anchor.ch;
+                window.selectionEnd = selections[0].head.ch;
+                window.selectedText = editor.getSelection();
+
+            }
+        });
+
+        // ✅ Function to replace selected text
+        window.replaceSelectedTextInEditor = function (newText) {
+            if (!window.selectedText) {
+                showAlert("❌ No text selected to replace!",'success');
+                return;
+            }
+            editor.replaceSelection(newText);
+            editor.focus();
+        };
+
+        // ✅ Store editor globally
+        window.aiAssistantEditor = editor;
+    };
 
 
 

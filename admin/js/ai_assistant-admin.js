@@ -29,6 +29,65 @@
      * practising this, we should strive to set a better example in our own work.
      */
 
+
+    // $(document).ready(function () {
+    //     window.aiAssistantInitEditor = function () {
+    //         if (typeof wp === 'undefined' || typeof wp.CodeMirror === 'undefined') {
+    //             console.error("❌ CodeMirror not loaded!");
+    //             return;
+    //         }
+    //
+    //         let textarea = document.getElementById("theme-file-editor");
+    //
+    //         // ✅ Check if CodeMirror is already initialized
+    //         if (textarea.classList.contains("codemirror-initialized")) {
+    //             console.warn("⚠️ CodeMirror already initialized, skipping...");
+    //             return;
+    //         }
+    //
+    //         // ✅ Initialize CodeMirror
+    //         let editor = wp.CodeMirror.fromTextArea(textarea, {
+    //             mode: "php",
+    //             lineNumbers: true,
+    //             lineWrapping: true,
+    //             indentUnit: 4,
+    //             tabSize: 4,
+    //             theme: "default",
+    //             matchBrackets: true,
+    //             autoCloseBrackets: true,
+    //             styleActiveLine: true
+    //         });
+    //
+    //         // ✅ Set custom height
+    //         editor.setSize("100%", "1000px"); // Adjust height here
+    //
+    //         // Track selection for replacing text
+    //             let selectionStart = 0;
+    //             let selectionEnd = 0;
+    //             let selectedText = "";
+    //         editor.on("beforeSelectionChange", function (instance, obj) {
+    //             let selections = obj.ranges;
+    //             if (selections.length > 0) {
+    //                 selectionStart = selections[0].anchor.ch;
+    //                 selectionEnd = selections[0].head.ch;
+    //                 selectedText = editor.getSelection();
+    //             }
+    //         });
+    //
+    //         // ✅ Mark as initialized to prevent duplicate instances
+    //         textarea.classList.add("codemirror-initialized");
+    //
+    //         // Store editor globally
+    //         window.aiAssistantEditor = editor;
+    //     };
+    //
+    //     // ✅ Call the function after DOM is ready
+    //     if (document.getElementById("theme-file-editor")) {
+    //         aiAssistantInitEditor();
+    //     }
+    // });
+
+
 })(jQuery);
 document.addEventListener('DOMContentLoaded', function () {
     const tabs = document.querySelectorAll('.ai_assistant-settings-page .nav-tab');
@@ -159,13 +218,18 @@ jQuery(document).ready(function ($) {
 
     $("#file_save").on("click", function () {
         var filePath = new URLSearchParams(window.location.search).get("file");
-        var fileContent = $("#theme-file-editor").val().trim();
+
+        // ✅ Sync CodeMirror content to the textarea before saving
+        var fileEditor = $("#theme-file-editor");
+        window.aiAssistantEditor.save();
+        var fileContent = fileEditor.val().trim();
+
         var _this = $(this);
+
         if (!filePath) {
             showAlert("❌ No file selected!", "danger");
             return;
         }
-
 
         _this.text("Saving...");
 
@@ -181,7 +245,6 @@ jQuery(document).ready(function ($) {
                 if (response.success) {
                     showAlert("✅ File saved successfully!", "success");
                     _this.text("Saved");
-
                 } else {
                     showAlert("❌ Failed to save file: " + response.data, "danger");
                     _this.text("Retry");
@@ -193,6 +256,7 @@ jQuery(document).ready(function ($) {
             }
         });
     });
+
 
 
     if (window.location.href.includes("admin.php?page=ai_assistant-theme-editor&file=header.php&needcorrection=true")) {
@@ -240,6 +304,7 @@ jQuery(document).ready(function ($) {
         parentBox.find(".tab-pane").removeClass("active");
         parentBox.find("#" + tabId).addClass("active");
     });
+
 
 });
 
