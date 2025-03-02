@@ -276,3 +276,19 @@
 #file_save{
     margin-top:15px;
 }
+.field__acf_wrapper textarea{
+    height:unset !important;
+    width:90%;
+
+}
+.field__acf_wrapper{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    margin-bottom:10px;
+}
+.field__acf_wrapper button{
+    width:10%;
+    padding:10px;
+}
+

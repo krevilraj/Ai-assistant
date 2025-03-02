@@ -81,77 +81,119 @@ jQuery(document).ready(function ($) {
     // Update the textarea with custom behavior for checkbox and radio buttons
     $(".custom-toolbar-btn").on("click", async function () {
         var shortcodeType = $(this).attr("data-shortcode");
-        var textarea = $("#custom-form-editor")[0];
-        var selectedText = "";
-
-        if (window.getSelection) {
-            selectedText = window.getSelection().toString().trim();
-        }
-
-        if (!selectedText && navigator.clipboard && navigator.clipboard.readText) {
-            try {
-                selectedText = await navigator.clipboard.readText();
-            } catch (err) {
-                console.error("Clipboard access failed:", err);
-            }
-        }
-
         var shortcode = "";
 
         if (shortcodeType === "checkbox" || shortcodeType === "radio") {
             shortcode = `[${shortcodeType} name="" option=""]`;
         } else {
-            shortcode = `[${shortcodeType} name=""${selectedText ? ` value="${selectedText}"` : ""}]`;
+            shortcode = `[${shortcodeType} name=""${window.selectedText ? ` value="${window.selectedText}"` : ""}]`;
         }
 
-        var currentContent = textarea.value.trim();
-        if (currentContent.length > 0) {
-            textarea.value = currentContent + "\n" + shortcode;
-        } else {
-            textarea.value = shortcode;
+        // If it's a "tab", insert directly into the custom form editor
+        if (shortcodeType === "tab") {
+            var targetTextarea = $("#custom-form-editor")[0];
+
+            // ✅ Append the shortcode and move cursor inside `name=""`
+            targetTextarea.value += (targetTextarea.value ? "\n" : "") + shortcode;
+
+            let cursorPosition = targetTextarea.value.lastIndexOf(`name=""`) + 6; // Inside name=""
+            targetTextarea.setSelectionRange(cursorPosition, cursorPosition);
+            targetTextarea.focus();
+            return;
         }
 
-        lastCursorPos = textarea.value.lastIndexOf(`name=""`) + 6;
-        textarea.setSelectionRange(lastCursorPos, lastCursorPos);
+        // Otherwise, insert into `#field__acf`
+        var textarea = $("#field__acf")[0];
+        textarea.value = shortcode;
+
+        // ✅ Place cursor inside `name=""`
+        let cursorPosition = shortcode.indexOf(`name=""`) + 6;
+        textarea.setSelectionRange(cursorPosition, cursorPosition);
         textarea.focus();
     });
 
-    // Handle option button click
-    $("button[data-shortcode='options']").on("click", function () {
-        var textarea = $("#custom-form-editor")[0];
-        var content = textarea.value;
-        var cursorPos = textarea.selectionStart;
 
-        var selectedOption = window.getSelection().toString().trim();
+    $("#add__field_to_textarea").on("click", function () {
+        var sourceTextarea = $("#field__acf")[0];
+        var targetTextarea = $("#custom-form-editor")[0];
 
-        if (selectedOption) {
-            var optionAttrIndex = content.lastIndexOf('option="', cursorPos);
+        // ✅ Get the source textarea value
+        var sourceValue = sourceTextarea.value.trim();
+        if (!sourceValue) {
+            alert("❌ No content in the field editor!");
+            return;
+        }
 
-            if (optionAttrIndex !== -1) {
-                var quoteEndIndex = content.indexOf('"', optionAttrIndex + 8);
-                if (quoteEndIndex !== -1) {
-                    var existingOptions = content.substring(optionAttrIndex + 8, quoteEndIndex).trim();
-                    if (existingOptions) {
-                        // Append with "|" only if there is existing text
-                        textarea.value =
-                            content.slice(0, quoteEndIndex) + "|" + selectedOption + content.slice(quoteEndIndex);
-                    } else {
-                        // Directly add selected text if empty
-                        textarea.value =
-                            content.slice(0, quoteEndIndex) + selectedOption + content.slice(quoteEndIndex);
-                    }
-                    cursorPos = quoteEndIndex + selectedOption.length + 1;
-                } else {
-                    // If no closing quote found, fallback
-                    textarea.value = content.slice(0, cursorPos) + selectedOption + content.slice(cursorPos);
-                    cursorPos += selectedOption.length;
-                }
+        // ✅ Append sourceTextarea content to targetTextarea
+        targetTextarea.value += (targetTextarea.value ? "\n" : "") + sourceValue;
 
-                textarea.setSelectionRange(cursorPos, cursorPos);
-                textarea.focus();
-            }
+        // ✅ Extract name attribute content
+        var nameMatch = sourceValue.match(/name="([^"]+)"/);
+        if (!nameMatch || !nameMatch[1]) {
+            alert("❌ No 'name' attribute found!");
+            return;
+        }
+
+        var nameAttribute = nameMatch[1].trim();
+
+        // ✅ Convert name to slug
+        var slug = nameAttribute.toLowerCase()
+            .replace(/\s+/g, "_")  // Replace spaces with underscores
+            .replace(/[^a-z0-9_]/g, ""); // Remove invalid characters
+
+
+        // ✅ Create the PHP field output
+        var phpFieldCode = `<?php the_field('${slug}'); ?>`;
+        sourceTextarea.value = "";
+
+        if (typeof replaceSelectedTextInEditor === "function") {
+            replaceSelectedTextInEditor(phpFieldCode);
         }
     });
+
+
+
+
+
+
+
+    // Handle option button click
+    $("button[data-shortcode='options']").on("click", function () {
+        var textarea = $("#field__acf")[0];
+        var content = textarea.value;
+
+        var selectedOption = window.selectedText.trim(); // Get selected text globally
+        if (!selectedOption) {
+            alert("❌ No text selected!");
+            return;
+        }
+
+        console.log("Selected Option:", selectedOption);
+
+        // ✅ Use regex to find the option attribute inside the shortcode
+        var optionMatch = content.match(/option="([^"]*)"/);
+
+        if (optionMatch) {
+            var existingOptions = optionMatch[1].trim();
+
+            // ✅ Append new option properly
+            var newOptions = existingOptions ? existingOptions + "|" + selectedOption : selectedOption;
+
+            // ✅ Replace option attribute with updated value
+            var updatedContent = content.replace(/option="([^"]*)"/, `option="${newOptions}"`);
+
+            textarea.value = updatedContent;
+
+            // ✅ Keep the cursor at the end of the updated option
+            var newCursorPos = updatedContent.indexOf(`option="${newOptions}"`) + `option="${newOptions}"`.length;
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+            textarea.focus();
+        } else {
+            alert("❌ No option attribute found in the shortcode!");
+        }
+    });
+
+
 
     // Update last cursor position on keypress or click inside textarea
     $("#custom-form-editor").on("click keyup", function () {
@@ -160,9 +202,14 @@ jQuery(document).ready(function ($) {
 
     // Handle JSON creation button
     $("#create-json-btn").on("click", function () {
+        var group_field = $("#group__field");
+        if (!group_field.val().trim()) {
+            showAlert("No group field name avilable",'danger');
+            return;
+        }
         var textareaContent = $("#custom-form-editor").val().trim();
         if (!textareaContent) {
-            alert("No content available to create JSON.");
+            showAlert("No content available to create JSON.",'danger');
             return;
         }
 
@@ -170,14 +217,18 @@ jQuery(document).ready(function ($) {
         var lines = textareaContent.split("\n");
 
         lines.forEach(function (line) {
-            var match = line.match(/\[([a-zA-Z0-9_-]+)\s+name="([^"]+)"(?:\s+value="([^"]*)")?(?:\s+option="([^"]*)")?\]/);
+            // ✅ Updated regex to properly capture HTML except `<script>` tags
+            var match = line.match(/\[([a-zA-Z0-9_-]+)\s+name="([^"]+)"(?:\s+value="((?:(?!<\/?script).)*)")?(?:\s+option="([^"]*)")?\]/);
+
             if (match) {
-                var type = match[1];
-                var name = match[2];
-                var value = match[3] || "";
+                var type = match[1];  // Field type (e.g., text, textarea, checkbox)
+                var name = match[2];  // Field name (label)
+                var value = match[3] ? match[3].trim() : ""; // Preserve HTML in value
                 var optionsRaw = match[4] || "";
 
-                var slug = name.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+                var slug = name.toLowerCase()
+                    .replace(/\s+/g, "_")  // Replace spaces with underscores
+                    .replace(/[^a-z0-9_]/g, ""); // Remove invalid characters
 
                 var field = {
                     key: "field_" + slug,
@@ -187,7 +238,7 @@ jQuery(document).ready(function ($) {
                     default_value: value
                 };
 
-                // Handle options for checkbox and radio
+                // ✅ Handle options for checkbox and radio
                 if ((type === "checkbox" || type === "radio") && optionsRaw) {
                     field.choices = optionsRaw.split("|").reduce(function (acc, option) {
                         var trimmedOption = option.trim();
@@ -207,7 +258,7 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        // Get the selected location rule
+        // ✅ Get the selected location rule
         var selectedParam = $(".acf-location-param").val();
         var selectedValue = $(".acf-location-value").val();
 
@@ -216,11 +267,11 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        var locationData = [[{param: selectedParam, operator: "==", value: selectedValue}]];
+        var locationData = [[{ param: selectedParam, operator: "==", value: selectedValue }]];
 
         var jsonData = {
             key: "group_" + Date.now(),
-            title: "Custom Fields",
+            title: group_field.val().trim(),
             fields: fields,
             location: locationData,
             style: "default",
@@ -229,6 +280,7 @@ jQuery(document).ready(function ($) {
             hide_on_screen: []
         };
 
+        // ✅ Send JSON to AJAX
         $.ajax({
             url: ajax_object.ajax_url,
             type: "POST",
@@ -245,6 +297,7 @@ jQuery(document).ready(function ($) {
             }
         });
     });
+
 
 });
 
@@ -789,7 +842,7 @@ jQuery(document).ready(function ($) {
             $("#file_save").text("Save");
         });
 
-        // ✅ Track selection globally
+        // ✅ Track selection globally (Fix missing last character issue)
         editor.on("beforeSelectionChange", function (instance, obj) {
             let selections = obj.ranges;
             console.log("🔍 Selection Event Triggered:", selections);
@@ -797,15 +850,21 @@ jQuery(document).ready(function ($) {
             if (selections.length > 0) {
                 window.selectionStart = selections[0].anchor.ch;
                 window.selectionEnd = selections[0].head.ch;
-                window.selectedText = editor.getSelection();
 
+                // ✅ Delay retrieving selected text to ensure full selection
+                setTimeout(() => {
+                    window.selectedText = editor.getSelection();
+                    console.log("📌 Selection Start:", window.selectionStart);
+                    console.log("📌 Selection End:", window.selectionEnd);
+                    console.log("📌 Selected Text:", window.selectedText);
+                }, 10); // Small delay to fix missing last character
             }
         });
 
         // ✅ Function to replace selected text
         window.replaceSelectedTextInEditor = function (newText) {
             if (!window.selectedText) {
-                showAlert("❌ No text selected to replace!",'success');
+                showAlert("❌ No text selected to replace!", 'danger');
                 return;
             }
             editor.replaceSelection(newText);
@@ -815,6 +874,7 @@ jQuery(document).ready(function ($) {
         // ✅ Store editor globally
         window.aiAssistantEditor = editor;
     };
+
 
 
 
