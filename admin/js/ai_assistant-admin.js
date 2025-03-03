@@ -323,6 +323,79 @@ jQuery(document).ready(function ($) {
     $(".acf-tab-content:first").show();
 
 
+    // Function to fetch field groups from the server
+    function fetchFieldGroups() {
+        return $.ajax({
+            url: ajax_object.ajax_url, // WordPress AJAX URL
+            type: 'POST',
+            data: {
+                action: 'get_custom_field_groups' // Custom AJAX action
+            }
+        });
+    }
+
+    // Function to render the accordion
+    function renderAccordion(fieldGroups) {
+        var accordion = $("#field-groups-accordion");
+        accordion.empty(); // Clear existing content
+
+        fieldGroups.forEach(function (group) {
+            // Create accordion item
+            var accordionItem = $('<div class="accordion-item"></div>');
+            var accordionHeader = $('<div class="accordion-header"></div>');
+            var accordionContent = $('<div class="accordion-content"></div>');
+
+            // Add group title and location to the header
+            accordionHeader.html(`
+                <span>${group.title}</span>
+                <span>Location: ${group.location}</span>
+            `);
+
+            // Fetch fields for this group
+            fetchFields(group.key).then(function (fields) {
+                // Add fields as buttons to the content
+                fields.forEach(function (field) {
+                    var fieldButton = $(`<button class="field-button">${field.label}</button>`);
+                    fieldButton.on("click", function () {
+                        alert(`Field Key: ${field.key}\nField Label: ${field.label}`);
+                    });
+                    accordionContent.append(fieldButton);
+                });
+            });
+
+            // Toggle accordion content on header click
+            accordionHeader.on("click", function () {
+                accordionContent.toggleClass("active");
+            });
+
+            // Append header and content to the accordion item
+            accordionItem.append(accordionHeader, accordionContent);
+            accordion.append(accordionItem);
+        });
+    }
+
+    // Function to fetch fields for a specific group
+    function fetchFields(groupKey) {
+        return $.ajax({
+            url: ajax_object.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'get_custom_fields',
+                group_key: groupKey
+            }
+        });
+    }
+
+    // Fetch field groups and render the accordion
+    fetchFieldGroups().then(function (response) {
+        if (response.success) {
+            renderAccordion(response.data);
+        } else {
+            console.error("Failed to fetch field groups:", response.data);
+        }
+    });
+
+
 });
 
 

@@ -119,13 +119,9 @@
         <!-- Apply Custom Field -->
         <div id="apply-field" class="tab-pane">
             <h3>Apply Custom Fields</h3>
-            <label>Select Field:</label>
-            <select>
-                <option value="none">-- Select a field --</option>
-                <option value="field_1">Custom Field 1</option>
-                <option value="field_2">Custom Field 2</option>
-            </select>
-            <button class="button button-secondary">Apply Field</button>
+            <div id="field-groups-accordion">
+                <!-- Accordion items will be dynamically added here -->
+            </div>
         </div>
     </div>
 </div>

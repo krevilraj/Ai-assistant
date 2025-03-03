@@ -336,3 +336,50 @@
 .after__subfield button:hover{
     background: #ddd;
 }
+
+/***************** Apply Acf *************************/
+     /* Scoped CSS for the plugin */
+ #apply-field .accordion-item {
+     border: 1px solid #ddd;
+     margin-bottom: 10px;
+ }
+
+#apply-field .accordion-header {
+    padding: 10px;
+    background-color: #f9f9f9;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#apply-field .accordion-header:hover {
+    background-color: #f1f1f1;
+}
+
+#apply-field .accordion-content {
+    padding: 10px;
+    display: none; /* Hidden by default */
+}
+
+#apply-field .accordion-content.active {
+    display: block; /* Show when active */
+}
+
+/* Field Buttons */
+#apply-field .field-button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 5px;
+    background-color: #0073aa;
+    color: white;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+}
+
+#apply-field .field-button:hover {
+    background-color: #005177;
+}
+

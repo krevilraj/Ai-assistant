@@ -82,6 +82,42 @@ class AI_Assistant
         add_action('wp_ajax_ai_assistant_create_user_type', [$this, 'ai_assistant_create_user_type']);
         add_action('wp_ajax_ai_assistant_delete_user_role', [$this, 'ai_assistant_delete_user_role']);
         add_action('wp_ajax_ai_assistant_save_file', [$this, 'ai_assistant_save_file']);
+        add_action('wp_ajax_get_custom_field_groups', [$this, 'get_custom_field_groups']);
+        add_action('wp_ajax_get_custom_fields', [$this, 'get_custom_fields']);
+    }
+
+
+
+    // Function to get custom field groups
+    function get_custom_field_groups() {
+        $field_groups = acf_get_field_groups(); // Get ACF field groups
+        $data = array();
+
+        foreach ($field_groups as $group) {
+            $data[] = array(
+                'key' => $group['key'],
+                'title' => $group['title'],
+                'location' => $group['location'][0][0]['param'] // Example location
+            );
+        }
+
+        wp_send_json_success($data);
+    }
+
+// Function to get fields for a specific group
+    function get_custom_fields() {
+        $group_key = $_POST['group_key'];
+        $fields = acf_get_fields($group_key); // Get fields for the group
+        $data = array();
+
+        foreach ($fields as $field) {
+            $data[] = array(
+                'key' => $field['key'],
+                'label' => $field['label']
+            );
+        }
+
+        wp_send_json_success($data);
     }
 
     private function define_public_hooks()
