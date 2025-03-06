@@ -368,18 +368,29 @@
 
 /* Field Buttons */
 #apply-field .field-button {
-    display: block;
-    width: 100%;
+    display: inline-block;
+    margin-right: 10px;
     padding: 10px;
     margin-bottom: 5px;
-    background-color: #0073aa;
-    color: white;
+    background-color: #f1f1f1;
+    color: #000;
     border: none;
     cursor: pointer;
     text-align: left;
 }
 
 #apply-field .field-button:hover {
-    background-color: #005177;
+    background-color: #ddd;
+}
+#apply-field fieldset {
+    padding: 10px;
+    border: 1px solid #000;
+}
+
+#apply-field legend {
+    background-color: gray;
+    color: white;
+    padding: 5px 10px;
+    margin: auto;
 }
 

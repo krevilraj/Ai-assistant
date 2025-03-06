@@ -323,77 +323,64 @@ jQuery(document).ready(function ($) {
     $(".acf-tab-content:first").show();
 
 
-    // Function to fetch field groups from the server
-    function fetchFieldGroups() {
-        return $.ajax({
-            url: ajax_object.ajax_url, // WordPress AJAX URL
-            type: 'POST',
-            data: {
-                action: 'get_custom_field_groups' // Custom AJAX action
+
+
+
+    $(document).on("keydown", function (event) {
+        if (event.ctrlKey && event.key === "s") {
+            event.preventDefault(); // Prevent browser's default save dialog
+
+            // ✅ Check if #file_save exists in the DOM
+            if ($("#file_save").length) {
+                $("#file_save").trigger("click"); // Simulate click
+            } else {
+                console.warn("❌ Save button (#file_save) not found in DOM!");
             }
-        });
-    }
-
-    // Function to render the accordion
-    function renderAccordion(fieldGroups) {
-        var accordion = $("#field-groups-accordion");
-        accordion.empty(); // Clear existing content
-
-        fieldGroups.forEach(function (group) {
-            // Create accordion item
-            var accordionItem = $('<div class="accordion-item"></div>');
-            var accordionHeader = $('<div class="accordion-header"></div>');
-            var accordionContent = $('<div class="accordion-content"></div>');
-
-            // Add group title and location to the header
-            accordionHeader.html(`
-                <span>${group.title}</span>
-                <span>Location: ${group.location}</span>
-            `);
-
-            // Fetch fields for this group
-            fetchFields(group.key).then(function (fields) {
-                // Add fields as buttons to the content
-                fields.forEach(function (field) {
-                    var fieldButton = $(`<button class="field-button">${field.label}</button>`);
-                    fieldButton.on("click", function () {
-                        alert(`Field Key: ${field.key}\nField Label: ${field.label}`);
-                    });
-                    accordionContent.append(fieldButton);
-                });
-            });
-
-            // Toggle accordion content on header click
-            accordionHeader.on("click", function () {
-                accordionContent.toggleClass("active");
-            });
-
-            // Append header and content to the accordion item
-            accordionItem.append(accordionHeader, accordionContent);
-            accordion.append(accordionItem);
-        });
-    }
-
-    // Function to fetch fields for a specific group
-    function fetchFields(groupKey) {
-        return $.ajax({
-            url: ajax_object.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'get_custom_fields',
-                group_key: groupKey
-            }
-        });
-    }
-
-    // Fetch field groups and render the accordion
-    fetchFieldGroups().then(function (response) {
-        if (response.success) {
-            renderAccordion(response.data);
-        } else {
-            console.error("Failed to fetch field groups:", response.data);
         }
     });
+
+
+    $('#apply-field .accordion-header').on('click', function () {
+        $(this).next('.accordion-content').slideToggle();
+    });
+
+    // ✅ Handle repeater subfields toggle
+    $('#apply-field .repeater-field legend').on('click', function () {
+        $(this).siblings('.repeater-subfields').slideToggle();
+    });
+
+    // ✅ Handle field button clicks
+    $('#apply-field .field-button').on('click', function () {
+        var fieldSlug = $(this).data('name');
+        var fieldType = $(this).data('type');
+        var parentRepeater = $(this).data('parent');
+
+        // ✅ Ensure `window.selectedText` is properly wrapped
+        var selectedContent = window.selectedText ? window.selectedText.trim() : "<!-- Add content here -->";
+
+        // ✅ Determine PHP code format
+        var phpFieldCode = "";
+
+        if (fieldType === 'repeater') {
+            phpFieldCode = `<?php if (have_rows('${fieldSlug}')): $i = 0; ?>\n` +
+                `    <?php while (have_rows('${fieldSlug}')) : the_row(); ?>\n` +
+                `        ${selectedContent}\n` +  // ✅ Wraps selected text inside the repeater loop
+                `    <?php $i++; endwhile; ?>\n` +
+                `<?php endif; ?>`;
+        } else if (fieldType === 'subfield' && parentRepeater) {
+            phpFieldCode = `<?php the_sub_field('${fieldSlug}'); ?>`;
+        } else {
+            phpFieldCode = `<?php the_field('${fieldSlug}'); ?>`;
+        }
+
+        if (typeof replaceSelectedTextInEditor === "function") {
+            replaceSelectedTextInEditor(phpFieldCode);
+        } else {
+            // ✅ Prompt Copy Instead
+            prompt("Press CTRL + C to copy the PHP code:", phpFieldCode);
+        }
+    });
+
 
 
 });

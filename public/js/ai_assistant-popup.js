@@ -89,8 +89,7 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        // ✅ Append sourceTextarea content to targetTextarea
-        targetTextarea.value += (targetTextarea.value ? "\n" : "") + sourceValue;
+
 
         // ✅ Extract the repeater name
         var repeaterMatch = sourceValue.match(/\[repeater\s+name="([^"]+)"\]/);
@@ -125,13 +124,27 @@ jQuery(document).ready(function ($) {
         fieldMatches.forEach((match, index) => {
             if (index === 0 && match[1] === "repeater") return; // ✅ Skip first match (Repeater)
 
-            let fieldName = match[2].trim();
+            let fieldType = match[1].trim(); // Field type (text, image, link_array)
+            let fieldName = match[2].trim(); // Field label
             let fieldSlug = fieldName.toLowerCase()
                 .replace(/\s+/g, "_")  // Replace spaces with underscores
                 .replace(/[^a-z0-9_]/g, ""); // Remove invalid characters
 
-            subFields.push({ name: fieldName, slug: fieldSlug });
+            // ✅ REMOVE `url` and `value` attributes from `[link_array]`
+            if (fieldType === "link_array") {
+                sourceValue = sourceValue.replace(
+                    new RegExp(`\\[link_array\\s+name="${fieldName}"[^\\]]*\\]`, "g"),
+                    `[link_array name="${fieldName}"]`
+                );
+                console.log(sourceValue);
+                console.log("sourcevalue test");
+            }
+
+            subFields.push({ type: fieldType, name: fieldName, slug: fieldSlug });
         });
+
+        // ✅ Append sourceTextarea content to targetTextarea
+        targetTextarea.value += (targetTextarea.value ? "\n" : "") + sourceValue;
 
         // ✅ Create buttons dynamically inside `.after__subfield`
         var buttonContainer = $(".after__subfield").empty(); // Clear previous buttons
@@ -139,9 +152,31 @@ jQuery(document).ready(function ($) {
             var subFieldButton = $("<button>")
                 .text(field.name)
                 .attr("data-slug", field.slug)
+                .attr("data-type", field.type) // ✅ Store field type
                 .addClass("sub-field-btn")
                 .on("click", function () {
-                    var phpSubFieldCode = `<?php the_sub_field('${field.slug}'); ?>`;
+                    var fieldType = $(this).attr("data-type");
+                    var fieldSlug = $(this).attr("data-slug");
+
+                    var phpSubFieldCode;
+                    if (fieldType === "link_array") {
+                        // ✅ Generate PHP for link_array WITHOUT default URL and value attributes
+                        phpSubFieldCode = `
+<?php 
+    $link_array = get_sub_field('${fieldSlug}'); // Retrieve the array from the 'link' custom field
+    if ($link_array && isset($link_array['url']) && isset($link_array['title'])) {
+        $link_url = esc_url($link_array['url']); // Extract the URL from the array
+?>
+        <a href="<?php echo $link_url; ?>"><?php echo esc_html($link_array["title"]); ?></a>
+<?php 
+    } 
+?>
+                    `.trim();
+                    } else {
+                        // ✅ Normal subfield output
+                        phpSubFieldCode = `<?php the_sub_field('${fieldSlug}'); ?>`;
+                    }
+
                     if (typeof replaceSelectedTextInEditor === "function") {
                         replaceSelectedTextInEditor(phpSubFieldCode);
                     }
@@ -153,6 +188,9 @@ jQuery(document).ready(function ($) {
         // ✅ Clear the source textarea after inserting
         sourceTextarea.value = "";
     });
+
+
+
 
 
 
@@ -190,11 +228,34 @@ jQuery(document).ready(function ($) {
                 return;
             }
 
-            // ✅ Create shortcode
-            if (shortcodeType === "checkbox" || shortcodeType === "radio") {
+            // ✅ Handle `link_array`
+            if (shortcodeType === "link_array") {
+                if (!window.selectedText || !window.selectedText.match(/<a\s+[^>]*>.*<\/a>/i)) {
+                    showAlert("❌ Please select a valid anchor tag first!", "danger");
+                    return;
+                }
+
+                // ✅ Extract href and text inside the anchor tag
+                var anchorMatch = window.selectedText.match(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/i);
+
+                if (!anchorMatch) {
+                    showAlert("❌ Invalid anchor tag structure!", "danger");
+                    return;
+                }
+
+                var extractedHref = anchorMatch[1].trim();  // ✅ Get the href value
+                var extractedText = anchorMatch[2].trim(); // ✅ Get anchor text content
+
+                // ✅ Encode quotes in the text (to prevent JSON errors)
+                extractedText = extractedText.replace(/"/g, "&quot;");
+
+                // ✅ Create shortcode for link_array
+                shortcode = `[link_array name="" url="${extractedHref}" value="${extractedText}"]`;
+
+            } else if (shortcodeType === "checkbox" || shortcodeType === "radio") {
                 shortcode = `[${shortcodeType} name="" option=""]`;
             } else {
-                shortcode = `[${shortcodeType} name=""${window.selectedText ? ` value="${window.selectedText}"` : ""}]`;
+                shortcode = `[${shortcodeType} name=""${window.selectedText ? ` value="${window.selectedText.replace(/"/g, "&quot;")}"` : ""}]`;
             }
 
             // ✅ Insert shortcode inside the repeater block
@@ -217,6 +278,8 @@ jQuery(document).ready(function ($) {
 
 
 
+
+
     // Update the textarea with custom behavior for checkbox and radio buttons
     $(".custom-toolbar-btn").on("click", async function () {
         var shortcodeType = $(this).attr("data-shortcode");
@@ -224,24 +287,26 @@ jQuery(document).ready(function ($) {
 
         if (shortcodeType === "checkbox" || shortcodeType === "radio") {
             shortcode = `[${shortcodeType} name="" option=""]`;
-        } else {
-            shortcode = `[${shortcodeType} name=""${window.selectedText ? ` value="${window.selectedText}"` : ""}]`;
+        }
+        // ✅ Handle link_array safely
+        else if (shortcodeType === "link_array") {
+            if (!window.selectedText || !window.selectedText.match(/<a\s+[^>]*href=["'][^"']+["'][^>]*>.*<\/a>/i)) {
+                showAlert("❌ Please select a valid anchor tag first!", "danger");
+                return;
+            }
+
+            // ✅ Extract href and text inside <a> tag
+            let linkMatch = window.selectedText.match(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/i);
+            let hrefValue = linkMatch ? linkMatch[1].trim() : "";
+            let anchorText = linkMatch ? linkMatch[2].trim().replace(/"/g, '&quot;') : ""; // ✅ Escape double quotes
+
+            // ✅ Generate safe `link_array` shortcode
+            shortcode = `[link_array name="" url="${hrefValue}" value="${anchorText}"]`;
+        }
+        else {
+            shortcode = `[${shortcodeType} name=""${window.selectedText ? ` value="${window.selectedText.replace(/"/g, '&quot;')}"` : ""}]`;
         }
 
-        // If it's a "tab", insert directly into the custom form editor
-        if (shortcodeType === "tab") {
-            var targetTextarea = $("#custom-form-editor")[0];
-
-            // ✅ Append the shortcode and move cursor inside `name=""`
-            targetTextarea.value += (targetTextarea.value ? "\n" : "") + shortcode;
-
-            let cursorPosition = targetTextarea.value.lastIndexOf(`name=""`) + 6; // Inside name=""
-            targetTextarea.setSelectionRange(cursorPosition, cursorPosition);
-            targetTextarea.focus();
-            return;
-        }
-
-        // Otherwise, insert into `#field__acf`
         var textarea = $("#field__acf")[0];
         textarea.value = shortcode;
 
@@ -252,6 +317,8 @@ jQuery(document).ready(function ($) {
     });
 
 
+
+
     $("#add__field_to_textarea").on("click", function () {
         var sourceTextarea = $("#field__acf")[0];
         var targetTextarea = $("#custom-form-editor")[0];
@@ -259,7 +326,7 @@ jQuery(document).ready(function ($) {
         // ✅ Get the source textarea value
         var sourceValue = sourceTextarea.value.trim();
         if (!sourceValue) {
-            alert("❌ No content in the field editor!");
+            showAlert("❌ No content in the field editor!", "danger");
             return;
         }
 
@@ -269,7 +336,7 @@ jQuery(document).ready(function ($) {
         // ✅ Extract name attribute content
         var nameMatch = sourceValue.match(/name="([^"]+)"/);
         if (!nameMatch || !nameMatch[1]) {
-            alert("❌ No 'name' attribute found!");
+            showAlert("❌ No 'name' attribute found!", "danger");
             return;
         }
 
@@ -280,15 +347,53 @@ jQuery(document).ready(function ($) {
             .replace(/\s+/g, "_")  // Replace spaces with underscores
             .replace(/[^a-z0-9_]/g, ""); // Remove invalid characters
 
+        // ✅ Handle `link_array` type
+        if (sourceValue.startsWith("[link_array")) {
+            if (!window.selectedText || !window.selectedText.match(/<a\s+[^>]*>.*<\/a>/i)) {
+                showAlert("❌ Please select a valid anchor tag first!", "danger");
+                return;
+            }
 
-        // ✅ Create the PHP field output
+            // ✅ Replace existing href and content inside <a> tag
+            var updatedAnchorTag = window.selectedText.replace(
+                /<a\s+([^>]*)href\s*=\s*["'][^"']*["']([^>]*)>.*<\/a>/i,
+                `<a $1href="<?php echo $link_url; ?>"$2><?php echo $link_array["title"]; ?></a>`
+            );
+
+            // ✅ Wrap the anchor tag with ACF link array PHP
+            var phpLinkArrayCode = `
+<?php 
+    $link_array = get_field('${slug}'); // Retrieve the array from the 'link' custom field
+    if ($link_array && isset($link_array['url'])) {
+        $link_url = esc_url($link_array['url']); // Extract the URL from the array
+?>
+        ${updatedAnchorTag}
+<?php 
+    } 
+?>
+        `.trim();
+
+            if (typeof replaceSelectedTextInEditor === "function") {
+                replaceSelectedTextInEditor(phpLinkArrayCode);
+                showAlert("✅ Link field added successfully!", "success");
+            }
+            sourceTextarea.value = "";
+            return;
+        }
+
+        // ✅ Create the PHP field output for normal fields
         var phpFieldCode = `<?php the_field('${slug}'); ?>`;
         sourceTextarea.value = "";
 
         if (typeof replaceSelectedTextInEditor === "function") {
             replaceSelectedTextInEditor(phpFieldCode);
+            showAlert(`✅ Field '${nameAttribute}' added successfully!`, "success");
         }
     });
+
+
+
+
 
 
 
@@ -346,6 +451,7 @@ jQuery(document).ready(function ($) {
             showAlert("No group field name available", "danger");
             return;
         }
+
         var textareaContent = $("#custom-form-editor").val().trim();
         if (!textareaContent) {
             showAlert("No content available to create JSON.", "danger");
@@ -362,8 +468,8 @@ jQuery(document).ready(function ($) {
             if (repeaterMatch) {
                 var repeaterName = repeaterMatch[1].trim();
                 var repeaterSlug = repeaterName.toLowerCase()
-                    .replace(/\s+/g, "_")  // Replace spaces with underscores
-                    .replace(/[^a-z0-9_]/g, ""); // Remove invalid characters
+                    .replace(/\s+/g, "_")
+                    .replace(/[^a-z0-9_]/g, "");
 
                 // Push new repeater to stack
                 repeaterStack.push({
@@ -371,7 +477,7 @@ jQuery(document).ready(function ($) {
                     label: repeaterName,
                     name: repeaterSlug,
                     type: "repeater",
-                    sub_fields: [] // Store subfields inside repeater
+                    sub_fields: []
                 });
 
                 return; // Skip further processing for this line
@@ -380,43 +486,54 @@ jQuery(document).ready(function ($) {
             // ✅ Check for repeater end
             if (line.match(/\[\/repeater\]/)) {
                 if (repeaterStack.length > 0) {
-                    // Pop the last repeater and push it to fields or its parent repeater
                     var completedRepeater = repeaterStack.pop();
                     if (repeaterStack.length > 0) {
-                        // If there's a parent repeater, push it inside the sub_fields array
                         repeaterStack[repeaterStack.length - 1].sub_fields.push(completedRepeater);
                     } else {
-                        // Otherwise, add it to the main fields list
                         fields.push(completedRepeater);
                     }
                 }
                 return;
             }
 
-            // ✅ Match normal fields inside or outside repeaters
-            var match = line.match(/\[([a-zA-Z0-9_-]+)\s+name="([^"]+)"(?:\s+value="((?:(?!<\/?script).)*)")?(?:\s+option="([^"]*)")?\]/);
+            // ✅ Match normal fields including `link_array`
+            var match = line.match(/\[([a-zA-Z0-9_-]+)\s+name="([^"]+)"(?:\s+url="([^"]*)")?(?:\s+value="((?:(?!<\/?script).)*)")?(?:\s+option="([^"]*)")?\]/);
 
             if (match) {
                 var type = match[1];  // Field type (e.g., text, textarea, checkbox, image)
                 var name = match[2];  // Field name (label)
-                var value = match[3] ? match[3].trim() : ""; // Preserve HTML in value
-                var optionsRaw = match[4] || "";
+                var url = match[3] ? match[3].trim() : "";
+                var value = match[4] ? match[4].trim() : "";
+                var optionsRaw = match[5] || "";
 
                 var slug = name.toLowerCase()
-                    .replace(/\s+/g, "_")  // Replace spaces with underscores
-                    .replace(/[^a-z0-9_]/g, ""); // Remove invalid characters
+                    .replace(/\s+/g, "_")
+                    .replace(/[^a-z0-9_]/g, "");
+
+                // ✅ Decode HTML Entities in `value`
+                var decodeEntities = function (str) {
+                    var textarea = document.createElement("textarea");
+                    textarea.innerHTML = str;
+                    return textarea.value;
+                };
+
+                value = decodeEntities(value); // ✅ Fix JSON parsing issue
 
                 var field = {
                     key: "field_" + slug,
                     label: name,
                     name: slug,
-                    type: type,
-                    default_value: value
+                    type: type
                 };
 
-                // ✅ Ensure image fields return an image URL
-                if (type === "image") {
-                    field.return_format = "url"; // Set return type to image URL
+                // ✅ Ensure link fields are properly formatted
+                if (type === "link_array" || type === "link") {
+                    field.type = "link";
+                    field.return_format = "array"; // ACF return format for link array
+                    field.default_value = {
+                        "url": url,
+                        "title": value // ✅ Store visible link text separately!
+                    };
                 }
 
                 // ✅ Handle options for checkbox and radio
@@ -440,7 +557,7 @@ jQuery(document).ready(function ($) {
         });
 
         if (fields.length === 0) {
-            showAlert("No valid fields found.","danger");
+            showAlert("No valid fields found.", "danger");
             return;
         }
 
@@ -449,7 +566,7 @@ jQuery(document).ready(function ($) {
         var selectedValue = $(".acf-location-value").val();
 
         if (!selectedParam || !selectedValue) {
-            showAlert("Please select location conditions.","danger");
+            showAlert("Please select location conditions.", "danger");
             return;
         }
 
@@ -476,13 +593,17 @@ jQuery(document).ready(function ($) {
                 location_data: JSON.stringify(locationData)
             },
             success: function (response) {
-                showAlert(response.data,"success");
+                showAlert(response.data, "success");
             },
             error: function () {
-                showAlert("Failed to save JSON.","danger");
+                showAlert("Failed to save JSON.", "danger");
             }
         });
     });
+
+
+
+
 
 });
 
