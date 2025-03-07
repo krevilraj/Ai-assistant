@@ -30,87 +30,26 @@
      */
 
 
-    // $(document).ready(function () {
-    //     window.aiAssistantInitEditor = function () {
-    //         if (typeof wp === 'undefined' || typeof wp.CodeMirror === 'undefined') {
-    //             console.error("❌ CodeMirror not loaded!");
-    //             return;
-    //         }
-    //
-    //         let textarea = document.getElementById("theme-file-editor");
-    //
-    //         // ✅ Check if CodeMirror is already initialized
-    //         if (textarea.classList.contains("codemirror-initialized")) {
-    //             console.warn("⚠️ CodeMirror already initialized, skipping...");
-    //             return;
-    //         }
-    //
-    //         // ✅ Initialize CodeMirror
-    //         let editor = wp.CodeMirror.fromTextArea(textarea, {
-    //             mode: "php",
-    //             lineNumbers: true,
-    //             lineWrapping: true,
-    //             indentUnit: 4,
-    //             tabSize: 4,
-    //             theme: "default",
-    //             matchBrackets: true,
-    //             autoCloseBrackets: true,
-    //             styleActiveLine: true
-    //         });
-    //
-    //         // ✅ Set custom height
-    //         editor.setSize("100%", "1000px"); // Adjust height here
-    //
-    //         // Track selection for replacing text
-    //             let selectionStart = 0;
-    //             let selectionEnd = 0;
-    //             let selectedText = "";
-    //         editor.on("beforeSelectionChange", function (instance, obj) {
-    //             let selections = obj.ranges;
-    //             if (selections.length > 0) {
-    //                 selectionStart = selections[0].anchor.ch;
-    //                 selectionEnd = selections[0].head.ch;
-    //                 selectedText = editor.getSelection();
-    //             }
-    //         });
-    //
-    //         // ✅ Mark as initialized to prevent duplicate instances
-    //         textarea.classList.add("codemirror-initialized");
-    //
-    //         // Store editor globally
-    //         window.aiAssistantEditor = editor;
-    //     };
-    //
-    //     // ✅ Call the function after DOM is ready
-    //     if (document.getElementById("theme-file-editor")) {
-    //         aiAssistantInitEditor();
-    //     }
-    // });
 
 
 })(jQuery);
-document.addEventListener('DOMContentLoaded', function () {
-    const tabs = document.querySelectorAll('.ai_assistant-settings-page .nav-tab');
-    const tabContents = document.querySelectorAll('.ai_assistant-settings-page .tab-content');
 
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function (e) {
-            e.preventDefault();
-
-            // Remove active class from all tabs and tab contents
-            tabs.forEach(t => t.classList.remove('nav-tab-active'));
-            tabContents.forEach(tc => tc.classList.remove('active'));
-
-            // Add active class to the clicked tab and its content
-            this.classList.add('nav-tab-active');
-            const target = document.querySelector(this.getAttribute('href'));
-            target.classList.add('active');
-        });
-    });
-});
 
 
 jQuery(document).ready(function ($) {
+
+    $(".ai_assistant-settings-page .nav-tab").on("click", function (e) {
+        e.preventDefault();
+
+        // Remove active class from all tabs and tab contents
+        $(".ai_assistant-settings-page .nav-tab").removeClass("nav-tab-active");
+        $(".ai_assistant-settings-page .tab-content").removeClass("active");
+
+        // Add active class to the clicked tab and its associated content
+        $(this).addClass("nav-tab-active");
+        $($(this).attr("href")).addClass("active");
+    });
+
     // ✅ Toggle folders based on 'open' class
     $(document).on('click', '.folder', function (e) {
         e.stopPropagation();
@@ -152,9 +91,6 @@ jQuery(document).ready(function ($) {
         }
     });
 
-});
-
-jQuery(document).ready(function ($) {
     // ✅ Open Modal
     $('#open-dashicon-picker').on('click', function () {
         $('#dashicon-picker-modal').fadeIn('fast');
@@ -200,7 +136,57 @@ jQuery(document).ready(function ($) {
             });
         }
     });
+
+    // ✅ Open Modal
+    $('#open-dashicon-picker').on('click', function () {
+        $('#dashicon-picker-modal').fadeIn('fast');
+    });
+
+    // ✅ Close Modal
+    $('#close-dashicon-picker, #dashicon-picker-overlay').on('click', function () {
+        $('#dashicon-picker-modal').fadeOut('fast');
+    });
+
+    // ✅ Handle Icon Selection
+    $(document).on('click', '.dashicon-picker-list li', function () {
+        const selectedIcon = $(this).data('icon');
+        $('#dashi_icon_field').val(`dashicons-${selectedIcon}`); // Paste icon slug into text field
+        $('#dashicon-picker-modal').fadeOut('fast');
+    });
+
+    // delete files and folders from theme editor
+    $(document).on('click', '.delete-item', function (e) {
+        e.preventDefault();
+        const filePath = $(this).data('path');
+        const confirmDelete = confirm(`Are you sure you want to delete "${filePath}"?`);
+
+        if (confirmDelete) {
+            $.ajax({
+                url: ajax_object.ajax_url,
+                type: "POST",
+                data: {
+                    action: "ai_assistant_delete_file",
+                    file_path: filePath
+                },
+                success: function (response) {
+                    if (response.success) {
+                        showAlert(`✅ ${response.data}`, "success");
+                        location.reload(); // Refresh after deletion
+                    } else {
+                        showAlert(`❌ ${response.data}`, "danger");
+                    }
+                },
+                error: function () {
+                    showAlert("❌ Error occurred while deleting the file/folder.", "danger");
+                }
+            });
+        }
+    });
+
+
 });
+
+
 
 
 jQuery(document).ready(function ($) {
@@ -323,9 +309,6 @@ jQuery(document).ready(function ($) {
     $(".acf-tab-content:first").show();
 
 
-
-
-
     $(document).on("keydown", function (event) {
         if (event.ctrlKey && event.key === "s") {
             event.preventDefault(); // Prevent browser's default save dialog
@@ -374,15 +357,19 @@ jQuery(document).ready(function ($) {
         }
 
         if (typeof replaceSelectedTextInEditor === "function") {
-            replaceSelectedTextInEditor(phpFieldCode);
-        } else {
-            // ✅ Prompt Copy Instead
-            prompt("Press CTRL + C to copy the PHP code:", phpFieldCode);
+            replaceSelectedTextInEditor(phpFieldCode,"Code copied!! Press Ctrl + V to paste.");
         }
     });
 
+    // to paste the shortcode of the contact form
+    $(".cf7-shortcode-btn").on("click", function () {
+        let shortcode = $(this).data("shortcode");
+        let phpFieldCode = `<?php echo do_shortcode('${shortcode}'); ?>`;
 
-
+        if (typeof replaceSelectedTextInEditor === "function") {
+            replaceSelectedTextInEditor(phpFieldCode,"Shortcode copied!! Press Ctrl+v to paste.");
+        }
+    });
 });
 
 

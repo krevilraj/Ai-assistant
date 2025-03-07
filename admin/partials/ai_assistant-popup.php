@@ -10,7 +10,7 @@
         <!-- Tabs -->
         <div class="custom-tabs">
             <button class="custom-tab active" data-tab="basic_setting">Basic Setting</button>
-            <button class="custom-tab " data-tab="create_acf">Create ACF</button>
+            <button class="custom-tab " data-tab="contact_form7">Contact Form 7</button>
             <button class="custom-tab" data-tab="apply_acf">Apply ACF</button>
             <button class="custom-tab" data-tab="additional_settings">Additional Settings</button>
         </div>
@@ -23,63 +23,29 @@
             </ul>
 
         </div>
-        <div id="create_acf" class="custom-tab-content">
+        <div id="contact_form7" class="custom-tab-content">
             <div class="custom-toolbar">
 
-                <button class="custom-toolbar-btn" data-shortcode="text">Text</button>
-                <button class="custom-toolbar-btn" data-shortcode="textarea">Text Area</button>
-                <button class="custom-toolbar-btn" data-shortcode="image">Image</button>
-                <button class="custom-toolbar-btn" data-shortcode="wysiwyg">WYSIWYG</button>
-                <button class="custom-toolbar-btn" data-shortcode="number">Number</button>
-                <button class="custom-toolbar-btn" data-shortcode="url">URL</button>
-                <button class="custom-toolbar-btn" data-shortcode="email">Email</button>
-                <button class="custom-toolbar-btn" data-shortcode="tel">Tel</button>
+                <button class="contact-form-btn" data-shortcode="text">Text</button>
+                <button class="contact-form-btn" data-shortcode="email">Email</button>
+                <button class="contact-form-btn" data-shortcode="url">URL</button>
+                <button class="contact-form-btn" data-shortcode="tel">Tel</button>
+                <button class="contact-form-btn" data-shortcode="number">Number</button>
+                <button class="contact-form-btn" data-shortcode="date">Date</button>
+                <button class="contact-form-btn" data-shortcode="textarea">Text Area</button>
+                <button class="contact-form-btn" data-shortcode="drop_down_menu">Drop down menu</button>
+                <button class="contact-form-btn" data-shortcode="checkbox">Checkboxes</button>
+                <button class="contact-form-btn" data-shortcode="radio">Radio Buttons</button>
+                <button class="contact-form-btn" data-shortcode="acceptance">Acceptance</button>
+                <button class="contact-form-btn" data-shortcode="file">File</button>
+                <button class="contact-form-btn" data-shortcode="submit">Submit</button>
 
-                <div class="d-full">
-                    <button class="custom-toolbar-btn" data-shortcode="tab">Tab</button>
-                    <button class="custom-toolbar-btn" data-shortcode="checkbox">Checkboxes</button>
-                    <button class="custom-toolbar-btn" data-shortcode="radio">Radio Buttons</button>
-                    <br>
-
-                </div>
-                <div class="d-full">
-                    <button class="" data-shortcode="options">Options</button>
-                </div>
 
 
             </div>
+            <h3>Mail Message</h3>
+            <button class="contact-form-btn" data-shortcode="convert_to_mail">Convert for mail message</button>
 
-            <div class="custom-editor">
-                <textarea id="custom-form-editor" placeholder="Enter your custom field template here..."></textarea>
-                <div class="acf-location-container">
-                    <label>Show this field group if</label>
-                    <div class="acf-location-row">
-                        <!-- First Dropdown: Condition Type -->
-                        <select class="acf-location-param">
-                            <option value="post_type">Post Type</option>
-                            <option value="page">Page</option>
-                            <option value="page_template">Page Template</option>
-                            <option value="taxonomy">Taxonomy</option>
-                        </select>
-
-                        <!-- Second Dropdown: Operator -->
-                        <select class="acf-location-operator">
-                            <option value="==">is equal to</option>
-                            <option value="!=">is not equal to</option>
-                        </select>
-
-                        <!-- Third Dropdown: Dynamic Values (Initially Empty) -->
-
-                        <select class="acf-location-value">
-                            <option value="">Select a value</option>
-
-                        </select>
-                    </div>
-
-                </div>
-
-                <button id="create-json-btn" style="margin-top: 10px;">Create JSON</button>
-            </div>
         </div>
         <div id="apply_acf" class="custom-tab-content">
             <div class="acf-location-container">

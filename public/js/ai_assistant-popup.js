@@ -90,7 +90,6 @@ jQuery(document).ready(function ($) {
         }
 
 
-
         // ✅ Extract the repeater name
         var repeaterMatch = sourceValue.match(/\[repeater\s+name="([^"]+)"\]/);
         if (!repeaterMatch || !repeaterMatch[1]) {
@@ -114,7 +113,7 @@ jQuery(document).ready(function ($) {
 
         // ✅ Replace selected text in the editor with PHP repeater loop
         if (typeof replaceSelectedTextInEditor === "function" && window.selectedText) {
-            replaceSelectedTextInEditor(phpRepeaterCode);
+            replaceSelectedTextInEditor(phpRepeaterCode,"Code copied!! Press Ctrl + V to paste.");
         }
 
         // ✅ Extract all `name` attributes inside the repeater (EXCLUDE REPEATER NAME)
@@ -140,7 +139,7 @@ jQuery(document).ready(function ($) {
                 console.log("sourcevalue test");
             }
 
-            subFields.push({ type: fieldType, name: fieldName, slug: fieldSlug });
+            subFields.push({type: fieldType, name: fieldName, slug: fieldSlug});
         });
 
         // ✅ Append sourceTextarea content to targetTextarea
@@ -178,7 +177,7 @@ jQuery(document).ready(function ($) {
                     }
 
                     if (typeof replaceSelectedTextInEditor === "function") {
-                        replaceSelectedTextInEditor(phpSubFieldCode);
+                        replaceSelectedTextInEditor(phpSubFieldCode,"Code copied!! Press Ctrl + V to paste.");
                     }
                 });
 
@@ -188,13 +187,6 @@ jQuery(document).ready(function ($) {
         // ✅ Clear the source textarea after inserting
         sourceTextarea.value = "";
     });
-
-
-
-
-
-
-
 
     // Update the textarea with custom behavior for checkbox and radio buttons
     $(".custom-toolbar-btn1").on("click", function () {
@@ -276,10 +268,6 @@ jQuery(document).ready(function ($) {
         }
     });
 
-
-
-
-
     // Update the textarea with custom behavior for checkbox and radio buttons
     $(".custom-toolbar-btn").on("click", async function () {
         var shortcodeType = $(this).attr("data-shortcode");
@@ -302,8 +290,7 @@ jQuery(document).ready(function ($) {
 
             // ✅ Generate safe `link_array` shortcode
             shortcode = `[link_array name="" url="${hrefValue}" value="${anchorText}"]`;
-        }
-        else {
+        } else {
             shortcode = `[${shortcodeType} name=""${window.selectedText ? ` value="${window.selectedText.replace(/"/g, '&quot;')}"` : ""}]`;
         }
 
@@ -315,9 +302,6 @@ jQuery(document).ready(function ($) {
         textarea.setSelectionRange(cursorPosition, cursorPosition);
         textarea.focus();
     });
-
-
-
 
     $("#add__field_to_textarea").on("click", function () {
         var sourceTextarea = $("#field__acf")[0];
@@ -374,8 +358,7 @@ jQuery(document).ready(function ($) {
         `.trim();
 
             if (typeof replaceSelectedTextInEditor === "function") {
-                replaceSelectedTextInEditor(phpLinkArrayCode);
-                showAlert("✅ Link field added successfully!", "success");
+                replaceSelectedTextInEditor(phpLinkArrayCode,"✅ Link field added successfully!");
             }
             sourceTextarea.value = "";
             return;
@@ -386,20 +369,10 @@ jQuery(document).ready(function ($) {
         sourceTextarea.value = "";
 
         if (typeof replaceSelectedTextInEditor === "function") {
-            replaceSelectedTextInEditor(phpFieldCode);
-            showAlert(`✅ Field '${nameAttribute}' added successfully!`, "success");
+            let message = `✅ Field '${nameAttribute}' added successfully!`;
+            replaceSelectedTextInEditor(phpFieldCode,message);
         }
     });
-
-
-
-
-
-
-
-
-
-
 
     // Handle option button click
     $("button[data-shortcode='options']").on("click", function () {
@@ -436,8 +409,6 @@ jQuery(document).ready(function ($) {
             alert("❌ No option attribute found in the shortcode!");
         }
     });
-
-
 
     // Update last cursor position on keypress or click inside textarea
     $("#custom-form-editor").on("click keyup", function () {
@@ -570,7 +541,7 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        var locationData = [[{ param: selectedParam, operator: "==", value: selectedValue }]];
+        var locationData = [[{param: selectedParam, operator: "==", value: selectedValue}]];
 
         var jsonData = {
             key: "group_" + Date.now(),
@@ -602,7 +573,243 @@ jQuery(document).ready(function ($) {
     });
 
 
+    $(document).ready(function () {
+        $("#contact_form7 .contact-form-btn").on("click", function () {
+            let shortcodeType = $(this).data("shortcode");
+            let textarea = $("#wpcf7-form");
+            let selectedHtml = extractSelectedContent(textarea);
 
+            if (selectedHtml.trim() === "") {
+                alert("Please select an input field inside the textarea first.");
+                return;
+            }
+
+            if (shortcodeType === "convert_to_mail") {
+                let shortcodes = extractShortcodesFromTextarea(textarea);
+                let mailText = generateParagraphFromShortcodes(shortcodes);
+
+                $("#contact-form-editor-tabs li.active").removeClass('active');
+                $("#contact-form-editor-tabs #mail-panel-tab").addClass("active");
+                let mailTab = $("#contact-form-editor-tabs #mail-panel-tab").data('panel');
+                $("section.contact-form-editor-panel.active").removeClass('active');
+                $("section.contact-form-editor-panel").hide();
+                $("#" + mailTab).addClass('active').show();
+
+                let mailBodyTextarea = $("#wpcf7-mail-body");
+                let mailBodyText = mailBodyTextarea.val();
+
+                // ✅ Check if `--` is present in the textarea
+                let separatorIndex = mailBodyText.indexOf("--");
+
+                if (separatorIndex !== -1) {
+                    // ✅ If `--` exists, replace everything before it
+                    let newText = mailText + "\n" + mailBodyText.substring(separatorIndex);
+                    mailBodyTextarea.val(newText);
+                } else {
+                    // ✅ If `--` is not found, just append
+                    mailBodyTextarea.val(mailText);
+                }
+
+                // ✅ Scroll smoothly to #wpcf7-mail-body
+                $("html, body").animate({
+                    scrollTop: mailBodyTextarea.offset().top - 100
+                }, 500);
+
+                return;
+            } else {
+                let shortcode = generateCF7Shortcode(selectedHtml, shortcodeType);
+                if (shortcode) {
+                    replaceSelectedContent(textarea, shortcode);
+                }
+            }
+        });
+
+
+
+        function generateParagraphFromShortcodes(shortcodes) {
+            let output = [];
+
+            shortcodes.forEach(shortcode => {
+                // Extract field name and placeholder using regex
+                let nameMatch = shortcode.match(/\[([a-zA-Z0-9_*]+)\s+([^\s\]]+)/);
+                let placeholderMatch = shortcode.match(/placeholder\s+"([^"]+)"/);
+
+                let label = "";
+
+                if (placeholderMatch) {
+                    label = placeholderMatch[1]; // Take the placeholder text
+                } else if (nameMatch) {
+                    label = nameMatch[2].replace(/[_-]/g, " "); // Take field name and format it
+                } else {
+                    return; // Skip if no valid label found
+                }
+
+                // Capitalize first letter
+                label = label.charAt(0).toUpperCase() + label.slice(1);
+
+                // Extract the shortcode name
+                let shortcodeField = nameMatch ? `[${nameMatch[2]}]` : "";
+
+                output.push(`${label}: ${shortcodeField}`);
+            });
+
+            return output.join("\n");
+        }
+
+        function extractShortcodesFromTextarea(textarea) {
+            let text = textarea.val();
+            let shortcodeRegex = /\[([a-zA-Z0-9_*]+)([^\]]*)\]/g;
+            let matches = [...text.matchAll(shortcodeRegex)].map(match => match[0]); // Extract full shortcodes
+
+            return matches;
+        }
+
+        function extractSelectedContent(textarea) {
+            let start = textarea[0].selectionStart;
+            let end = textarea[0].selectionEnd;
+            return textarea.val().substring(start, end);
+        }
+
+        function replaceSelectedContent(textarea, newText) {
+            let start = textarea[0].selectionStart;
+            let end = textarea[0].selectionEnd;
+            let text = textarea.val();
+
+            textarea.val(text.substring(0, start) + newText + text.substring(end));
+        }
+
+
+        function generateCF7Shortcode(htmlString, shortcodeType) {
+            let tempDiv = $("<div>").html(htmlString);
+            let input = tempDiv.find("input, select, textarea, button");
+
+            // ✅ Handle Submit Button
+            if (shortcodeType === "submit") {
+                let button = tempDiv.find("button, input[type='submit']");
+
+                if (button.length === 0) {
+                    alert("No valid submit button found in the selection.");
+                    return "";
+                }
+
+                let buttonText = button.is("button") ? button.text().trim() : button.attr("value") || "Submit";
+                let classes = button.attr("class") ? `class:${button.attr("class").replace(/\s+/g, " class:")}` : "";
+
+                return `[submit ${classes} "${buttonText}"]`;
+            }
+            // ✅ Handle Acceptance Field (before checking input fields)
+            if (shortcodeType === "acceptance") {
+                let selectedText = htmlString.trim();
+
+                if (!selectedText) {
+                    alert("Please select the acceptance text first.");
+                    return "";
+                }
+
+                let randomNumber = Math.floor(Math.random() * 1000);
+                return `[acceptance acceptance-${randomNumber}]${selectedText}[/acceptance]`;
+            }
+
+            if (input.length === 0) {
+                alert("No valid input field found in the selection.");
+                return "";
+            }
+
+            let isTextarea = input.is("textarea");
+            let isSelect = input.is("select");
+            let isCheckbox = input.is('input[type="checkbox"]');
+            let isRadio = input.is('input[type="radio"]');
+            let isFile = input.is('input[type="file"]');
+
+            let type = isTextarea ? "textarea" :
+                isSelect ? "select" :
+                    isCheckbox ? "checkbox" :
+                        isRadio ? "radio" :
+                            isFile ? "file" :
+                                input.attr("type") || "text";
+
+            let name = input.attr("name") || input.attr("id") || "";
+
+            if (!name) {
+                name = `field-${Math.floor(Math.random() * 1000)}`; // ✅ Generate random name if missing
+            }
+
+            // ✅ Remove `[]` from names (checkbox, radio, file)
+            name = name.replace(/\[\]$/, "");
+
+            let classes = input.attr("class") ? `class:${input.attr("class").replace(/\s+/g, " class:")}` : "";
+            let placeholderAttr = input.attr("placeholder") ? `placeholder "${input.attr("placeholder")}"` : "";
+            let isRequired = input.is("[required]"); // Check if required exists
+
+            let fieldTypeMapping = {
+                text: "text",
+                textarea: "textarea",
+                number: "number",
+                url: "url",
+                email: "email",
+                tel: "tel",
+                date: "date",
+                checkbox: "checkbox",
+                radio: "radio",
+                file: "file",
+                acceptance: "acceptance",
+                submit: "submit",
+                drop_down_menu: "select",
+            };
+
+            let shortcodeTypeMapped = isFile ? "file" :
+                isCheckbox ? "checkbox" :
+                    isRadio ? "radio" :
+                        fieldTypeMapping[shortcodeType] || "text";
+
+            // Append '*' for required fields
+            if (isRequired) {
+                shortcodeTypeMapped += "*";
+            }
+
+            // ✅ Handle `<select>` (Dropdown menu)
+            if (isSelect) {
+                let options = input.find("option").map(function () {
+                    return `"${$(this).val()}"`;
+                }).get().join(" ");
+
+                return `[${shortcodeTypeMapped} ${name} ${classes} ${options}]`;
+            }
+
+            // ✅ Handle Checkbox
+            if (isCheckbox) {
+                let checkboxes = tempDiv.find(`input[type="checkbox"][name="${input.attr("name")}"]`);
+                let options = checkboxes.map(function () {
+                    return `"${$(this).val()}"`;
+                }).get().join(" ");
+
+                return `[${shortcodeTypeMapped} ${name} ${classes} ${options}]`;
+            }
+
+            // ✅ Handle Radio
+            if (isRadio) {
+                let radios = tempDiv.find(`input[type="radio"][name="${input.attr("name")}"]`);
+                let options = radios.map(function () {
+                    return `"${$(this).val()}"`;
+                }).get().join(" ");
+
+                return `[${shortcodeTypeMapped} ${name} ${classes} ${options}]`;
+            }
+
+            // ✅ Handle File Upload
+            if (isFile) {
+                let acceptAttr = input.attr("accept") || "";
+                let fileTypes = acceptAttr ? `filetypes:${acceptAttr.replace(/,\s*/g, "|")}` : "";
+                let fileLimit = "limit:1mb"; // Default size limit
+
+                return `[${shortcodeTypeMapped} ${name} ${classes} ${fileTypes} ${fileLimit}]`;
+            }
+
+            return `[${shortcodeTypeMapped} ${name} ${classes} ${placeholderAttr}]`;
+        }
+
+
+    });
 
 
 });
@@ -850,9 +1057,6 @@ jQuery(document).ready(function ($) {
     populateThemeDetails(); // ✅ Load on page load
 
 
-
-
-
     // ✅ Create theme and save data
 
 
@@ -1038,16 +1242,13 @@ jQuery(document).ready(function ($) {
 
                 // ✅ Replace selected menu HTML with the WordPress menu code
                 if (typeof replaceSelectedTextInEditor === "function") {
-                    replaceSelectedTextInEditor(response.data.menu_code);
-                } else {
-                    console.error("❌ replaceSelectedTextInEditor function not found.");
+                    replaceSelectedTextInEditor(response.data.menu_code,"Wordpress menu copied!! Press Ctrl + V to paste.");
                 }
             } else {
                 showAlert(response.data, "danger");
             }
         });
     }
-
 
 
     // 🌟 🚀 🌟 Handle CPT Creation
@@ -1091,7 +1292,7 @@ jQuery(document).ready(function ($) {
         sendAjax({action: "ai_assistant_create_user_type", user_type: userType, user_role: userRole}, _this);
     }
 
-    function handleDeleteUserType(_this,$){
+    function handleDeleteUserType(_this, $) {
         const parentLi = _this.closest('li');
         const userType = parentLi.find('input[name="remove_user_type"]:text').val().trim();
         sendAjax({action: "ai_assistant_delete_user_role", role: userType}, _this);
@@ -1113,7 +1314,6 @@ jQuery(document).ready(function ($) {
         // Show the PHP code in an alert
         showAlert(`✅ Generated PHP Code:\n${phpCode}`, "success");
     }
-
 
 
     // 🔹 Define global variables for selection tracking
@@ -1165,20 +1365,25 @@ jQuery(document).ready(function ($) {
         });
 
         // ✅ Function to replace selected text
-        window.replaceSelectedTextInEditor = function (newText) {
+        window.replaceSelectedTextInEditor = function (newText, message) {
             if (!window.selectedText) {
-                showAlert("❌ No text selected to replace!", 'danger');
-                return;
+                // ✅ Auto-copy to clipboard
+                let tempInput = $("<input>");
+                $("body").append(tempInput);
+                tempInput.val(newText).select();
+                document.execCommand("copy");
+                tempInput.remove();
+                showAlert(message, 'success');
+            }else{
+                editor.replaceSelection(newText);
+                editor.focus();
             }
-            editor.replaceSelection(newText);
-            editor.focus();
+
         };
 
         // ✅ Store editor globally
         window.aiAssistantEditor = editor;
     };
-
-
 
 
 });

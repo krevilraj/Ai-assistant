@@ -357,7 +357,7 @@ class AI_Assistant
         wp_send_json_success("Homepage set successfully.");
     }
 
-    public function reset_permalink_structure(){
+    public function reset_permalink_structure() {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized access.");
             return;
@@ -369,7 +369,12 @@ class AI_Assistant
         // ✅ Flush rewrite rules to apply changes immediately
         flush_rewrite_rules();
 
-        wp_send_json_success("Permalink structure reset to 'Post name' and flushed.");
+        // ✅ Clear cache
+        if (function_exists('wp_cache_flush')) {
+            wp_cache_flush();
+        }
+
+        wp_send_json_success("Permalink structure reset to 'Post name', rewrite rules flushed, and cache cleared.");
     }
 
     public function ai_assistant_create_theme()
