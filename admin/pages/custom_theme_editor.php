@@ -1,4 +1,15 @@
 <div class="ai-theme-editor">
+    <div class="text-align-right">
+        <div id="ai-assistant-theme-toggle">
+            <label class="theme-switch">
+                <input type="checkbox" id="theme-toggle-checkbox">
+                <span class="slider round"></span>
+            </label>
+        </div>
+
+    </div>
+
+
     <div class="theme-editor-container" style="display: flex; gap: 20px;">
         <!-- Left: Textarea Editor -->
         <div style="width: 70%;">

@@ -84,8 +84,34 @@ class AI_Assistant
         add_action('wp_ajax_ai_assistant_save_file', [$this, 'ai_assistant_save_file']);
         add_action('wp_ajax_get_custom_field_groups', [$this, 'get_custom_field_groups']);
         add_action('wp_ajax_get_custom_fields', [$this, 'get_custom_fields']);
+        add_action('wp_ajax_save_codemirror_theme', [$this, 'save_codemirror_theme']);
+        add_action('admin_body_class', [$this, 'add_dark_theme_body_class']);
     }
 
+    function add_dark_theme_body_class($classes) {
+        // ✅ Check if we're on the "ai_assistant-theme-editor" admin page
+        if (isset($_GET['page']) && $_GET['page'] === 'ai_assistant-theme-editor') {
+            $selected_theme = get_option('ai_assistant_codemirror_theme', 'default');
+
+            // ✅ If the theme is dark, add "ai-dark-theme" to <body> class
+            if ($selected_theme === 'dracula') {
+                $classes .= ' ai-dark-theme';
+            }
+        }
+
+        return $classes;
+    }
+
+
+    // ✅ Save CodeMirror theme selection in wp_options
+    function save_codemirror_theme() {
+        if (isset($_POST['theme'])) {
+            update_option('ai_assistant_codemirror_theme', sanitize_text_field($_POST['theme']));
+            wp_send_json_success(['message' => 'Theme updated successfully']);
+        } else {
+            wp_send_json_error(['message' => 'Invalid request']);
+        }
+    }
 
 
     // Function to get custom field groups
@@ -1022,9 +1048,12 @@ class WP_Bootstrap_Navwalker extends Walker_Nav_Menu {
         $cpt_slug = sanitize_title($_POST['cpt_slug']);
         $plural_label = sanitize_text_field($_POST['plural_label']);
         $singular_label = sanitize_text_field($_POST['singular_label']);
+        $no_of_posts = isset($_POST['no_of_posts']) ? intval($_POST['no_of_posts']) : 2; // Default to 2
         $dashi_icon = sanitize_text_field($_POST['dashi_icon']);
         $supports = isset($_POST['supports']) ? $_POST['supports'] : [];
-        $create_template = intval($_POST['create_template']);
+
+        $create_template = $_POST['create_template'];
+        $create_archive_template = $_POST['create_archive_template'];
 
         if (empty($cpt_slug) || empty($plural_label) || empty($singular_label)) {
             wp_send_json_error("❌ Required fields are missing.");
@@ -1043,25 +1072,81 @@ class WP_Bootstrap_Navwalker extends Walker_Nav_Menu {
         $cpt_code .= "        'menu_icon' => '{$dashi_icon}',\n";
         $cpt_code .= "        'supports' => " . var_export($supports, true) . ",\n";
         $cpt_code .= "        'has_archive' => true,\n";
-        $cpt_code .= "        'show_in_rest' => true\n";
+        $cpt_code .= "        'show_in_rest' => true,\n";
+        $cpt_code .= "        'query_var' => true,\n";
+        $cpt_code .= "        'rewrite' => ['slug' => '{$cpt_slug}']\n";
         $cpt_code .= "    ];\n";
         $cpt_code .= "    register_post_type('{$cpt_slug}', \$args);\n";
         $cpt_code .= "}\nadd_action('init', 'register_{$cpt_slug}_cpt');\n";
+
+        // Append Pagination Query Modifier
+        $cpt_code .= "\n// Modify Archive Query for '{$cpt_slug}' CPT\n";
+        $cpt_code .= "function modify_{$cpt_slug}_archive_query(\$query) {\n";
+        $cpt_code .= "    if (!is_admin() && \$query->is_main_query() && is_post_type_archive('{$cpt_slug}')) {\n";
+        $cpt_code .= "        \$query->set('posts_per_page', {$no_of_posts});\n";
+        $cpt_code .= "    }\n";
+        $cpt_code .= "}\nadd_action('pre_get_posts', 'modify_{$cpt_slug}_archive_query');\n";
 
         if (file_put_contents($functions_path, $cpt_code, FILE_APPEND) === false) {
             wp_send_json_error("❌ Failed to register the CPT in functions.php.");
         }
 
-        if ($create_template === 1) {
+        // Create Single Template
+        if ($create_template == 1) {
             $template_file = get_stylesheet_directory() . "/single-{$cpt_slug}.php";
-            $template_content = "<?php\n// 🌟 Single Template for '{$cpt_slug}' CPT\nget_header();\n?>\n\n<div class='container'>\n    <?php\n    if (have_posts()) :\n        while (have_posts()) : the_post();\n            the_title('<h1>', '</h1>');\n            the_content();\n        endwhile;\n    endif;\n    ?>\n</div>\n\n<?php get_footer(); ?>";
-            if (file_put_contents($template_file, $template_content) === false) {
-                wp_send_json_error("❌ CPT created, but failed to create template file.");
-            }
+            $template_content = "<?php\n// Single Template for '{$cpt_slug}' CPT\nget_header();\n?>\n\n<div class='container'>\n    <?php\n    if (have_posts()) :\n        while (have_posts()) : the_post();\n            echo '<h1>' . get_the_title() . '</h1>';\n            the_content();\n        endwhile;\n    endif;\n    ?>\n</div>\n\n<?php get_footer(); ?>";
+            file_put_contents($template_file, $template_content);
         }
 
-        wp_send_json_success("🎉 Custom Post Type '{$plural_label}' created successfully" . ($create_template ? " with template!" : "!"));
+        // Create Archive Template with Custom Pagination
+        if ($create_archive_template == 1) {
+            $archive_file = get_stylesheet_directory() . "/archive-{$cpt_slug}.php";
+            $archive_content = <<<PHP
+<?php
+// Archive Template for '{$cpt_slug}' CPT
+get_header(); ?>
+
+<div class="container">
+    <h1><?php post_type_archive_title(); ?></h1>
+
+    <?php if (have_posts()) : ?>
+        <div class="post-list">
+            <?php while (have_posts()) : the_post(); ?>
+                <div class="post-item">
+                    <h2><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
+                    <p><?php the_excerpt(); ?></p>
+                </div>
+            <?php endwhile; ?>
+        </div>
+
+        <div class="pagination">
+            <?php
+            global \$wp_query;
+            echo paginate_links([
+                'total'     => \$wp_query->max_num_pages,
+                'current'   => max(1, get_query_var('paged')),
+                'prev_text' => '&laquo; Previous',
+                'next_text' => 'Next &raquo;',
+            ]);
+            ?>
+        </div>
+
+    <?php else : ?>
+        <p>No posts found.</p>
+    <?php endif; ?>
+
+</div>
+
+<?php get_footer(); ?>
+PHP;
+
+            file_put_contents($archive_file, $archive_content);
+        }
+
+
+        wp_send_json_success("🎉 Custom Post Type '{$plural_label}' created successfully" . ($create_template ? " with single template!" : "") . ($create_archive_template ? " and archive template!" : ""));
     }
+
     // Create user type
     function ai_assistant_create_user_type() {
         if (!current_user_can('manage_options')) {
@@ -1116,8 +1201,6 @@ class WP_Bootstrap_Navwalker extends Walker_Nav_Menu {
             wp_send_json_error("❌ Failed to delete role '{$role}'.");
         }
     }
-
-
 
 
 }

@@ -93,18 +93,29 @@
                     <?php ai_assistant_render_spark_button('create_custom_post_type'); ?>
 
                     <label>
-                        <input type="checkbox" name="cpt__template" checked> Create template
+                        <input type="checkbox" name="cpt__template" checked> Create Single Page
                     </label>
+                    <label>
+                        <input type="checkbox" name="cpt__archive_template" checked> Create Archive Page
+                    </label>
+
+                    <div class="d-flex no-of-posts">
+                        <p>No of Post in Archive</p>
+                        <input type="number" name="no_of_posts" placeholder="Post per page" min="1" value="1">
+                    </div>
 
                     <h3>Supports</h3>
                     <div style="display: flex;flex-direction: column; gap: 10px;">
-                        <input type="text" id="dashi_icon_field" name="dashi_icon" placeholder="Click to select icon"
+                        <input type="text" class="dashi_icon_field" name="dashi_icon" placeholder="Click to select icon"
                                readonly>
-                        <button type="button" id="open-dashicon-picker" class="button button-primary">Choose Dashicon
+                        <button type="button" class=" open-dashicon-picker button button-primary">Choose Dashicon
                         </button>
 
                     </div>
 
+                    <label>
+                        <input type="checkbox" name="cpt__title" checked> Title
+                    </label>
                     <label>
                         <input type="checkbox" name="cpt__editor" checked> Editor
                     </label>

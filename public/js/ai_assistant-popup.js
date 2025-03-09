@@ -1258,6 +1258,7 @@ jQuery(document).ready(function ($) {
             action: "ai_assistant_create_cpt",
             cpt_slug: parentLi.find('[name="cpt_slug"]').val().trim(),
             plural_label: parentLi.find('[name="plural__label"]').val().trim(),
+            no_of_posts: parentLi.find('[name="no_of_posts"]').val().trim(),
             singular_label: parentLi.find('[name="singular__label"]').val().trim(),
             dashi_icon: parentLi.find('[name="dashi_icon"]').val().trim(),
             supports: []
@@ -1267,10 +1268,13 @@ jQuery(document).ready(function ($) {
             return showAlert("❌ Slug, Plural Label, and Singular Label are required.", "danger");
         }
 
+        if (parentLi.find('[name="cpt__title"]').is(':checked')) cptData.supports.push('title');
         if (parentLi.find('[name="cpt__editor"]').is(':checked')) cptData.supports.push('editor');
         if (parentLi.find('[name="cpt__featured_image"]').is(':checked')) cptData.supports.push('thumbnail');
         const createTemplate = parentLi.find('[name="cpt__template"]').is(':checked') ? 1 : 0;
         cptData.create_template = createTemplate;
+        const createArchiveTemplate = parentLi.find('[name="cpt__archive_template"]').is(':checked') ? 1 : 0;
+        cptData.create_archive_template = createArchiveTemplate;
 
         sendAjax(cptData, _this, function (response) {
             if (createTemplate) {
@@ -1314,77 +1318,6 @@ jQuery(document).ready(function ($) {
         // Show the PHP code in an alert
         showAlert(`✅ Generated PHP Code:\n${phpCode}`, "success");
     }
-
-
-    // 🔹 Define global variables for selection tracking
-    window.selectionStart = 0;
-    window.selectionEnd = 0;
-    window.selectedText = "";
-
-    window.aiAssistantInitEditor = function () {
-        if (typeof wp === 'undefined' || typeof wp.CodeMirror === 'undefined') {
-            console.error("❌ CodeMirror not loaded!");
-            return;
-        }
-
-        var editor = wp.CodeMirror.fromTextArea(document.getElementById("theme-file-editor"), {
-            mode: "php",
-            lineNumbers: true,
-            lineWrapping: true,
-            indentUnit: 4,
-            tabSize: 4,
-            theme: "default",
-            matchBrackets: true,
-            autoCloseBrackets: true,
-            styleActiveLine: true
-        });
-
-        // ✅ Set custom height
-        editor.setSize("100%", "1000px");
-
-        // ✅ Remove 'button-disabled' when content changes
-        editor.on("change", function () {
-            $("#file_save").removeClass("button-disabled");
-            $("#file_save").text("Save");
-        });
-
-        // ✅ Track selection globally (Fix missing last character issue)
-        editor.on("beforeSelectionChange", function (instance, obj) {
-            let selections = obj.ranges;
-
-
-            if (selections.length > 0) {
-                window.selectionStart = selections[0].anchor.ch;
-                window.selectionEnd = selections[0].head.ch;
-
-                // ✅ Delay retrieving selected text to ensure full selection
-                setTimeout(() => {
-                    window.selectedText = editor.getSelection();
-                }, 10); // Small delay to fix missing last character
-            }
-        });
-
-        // ✅ Function to replace selected text
-        window.replaceSelectedTextInEditor = function (newText, message) {
-            if (!window.selectedText) {
-                // ✅ Auto-copy to clipboard
-                let tempInput = $("<input>");
-                $("body").append(tempInput);
-                tempInput.val(newText).select();
-                document.execCommand("copy");
-                tempInput.remove();
-                showAlert(message, 'success');
-            }else{
-                editor.replaceSelection(newText);
-                editor.focus();
-            }
-
-        };
-
-        // ✅ Store editor globally
-        window.aiAssistantEditor = editor;
-    };
-
 
 });
 

@@ -92,7 +92,7 @@ jQuery(document).ready(function ($) {
     });
 
     // ✅ Open Modal
-    $('#open-dashicon-picker').on('click', function () {
+    $('.open-dashicon-picker').on('click', function () {
         $('#dashicon-picker-modal').fadeIn('fast');
     });
 
@@ -104,7 +104,7 @@ jQuery(document).ready(function ($) {
     // ✅ Handle Icon Selection
     $(document).on('click', '.dashicon-picker-list li', function () {
         const selectedIcon = $(this).data('icon');
-        $('#dashi_icon_field').val(`dashicons-${selectedIcon}`); // Paste icon slug into text field
+        $('.dashi_icon_field').val(`dashicons-${selectedIcon}`); // Paste icon slug into text field
         $('#dashicon-picker-modal').fadeOut('fast');
     });
 
@@ -137,51 +137,6 @@ jQuery(document).ready(function ($) {
         }
     });
 
-    // ✅ Open Modal
-    $('#open-dashicon-picker').on('click', function () {
-        $('#dashicon-picker-modal').fadeIn('fast');
-    });
-
-    // ✅ Close Modal
-    $('#close-dashicon-picker, #dashicon-picker-overlay').on('click', function () {
-        $('#dashicon-picker-modal').fadeOut('fast');
-    });
-
-    // ✅ Handle Icon Selection
-    $(document).on('click', '.dashicon-picker-list li', function () {
-        const selectedIcon = $(this).data('icon');
-        $('#dashi_icon_field').val(`dashicons-${selectedIcon}`); // Paste icon slug into text field
-        $('#dashicon-picker-modal').fadeOut('fast');
-    });
-
-    // delete files and folders from theme editor
-    $(document).on('click', '.delete-item', function (e) {
-        e.preventDefault();
-        const filePath = $(this).data('path');
-        const confirmDelete = confirm(`Are you sure you want to delete "${filePath}"?`);
-
-        if (confirmDelete) {
-            $.ajax({
-                url: ajax_object.ajax_url,
-                type: "POST",
-                data: {
-                    action: "ai_assistant_delete_file",
-                    file_path: filePath
-                },
-                success: function (response) {
-                    if (response.success) {
-                        showAlert(`✅ ${response.data}`, "success");
-                        location.reload(); // Refresh after deletion
-                    } else {
-                        showAlert(`❌ ${response.data}`, "danger");
-                    }
-                },
-                error: function () {
-                    showAlert("❌ Error occurred while deleting the file/folder.", "danger");
-                }
-            });
-        }
-    });
 
 
 });
@@ -243,38 +198,6 @@ jQuery(document).ready(function ($) {
         });
     });
 
-
-    if (window.location.href.includes("admin.php?page=ai_assistant-theme-editor&file=header.php&needcorrection=true")) {
-
-        // ✅ Show message
-        showAlert("✅ You can copy-paste the header in the editor then click on Save this now", "success");
-
-        // ✅ Remove 'removed' class from #ai__tasks
-        $("#ai__task").removeClass("closed");
-
-        // ✅ Add 'active' class to .correct__header .open__child
-        $(".correct__header").find(".open__child").addClass("active");
-        $(".correct__header").addClass("alert__active");
-
-        var actionSetting = $(".correct__header").find(".action__setting");
-
-        if (actionSetting.is(":visible")) {
-            actionSetting.slideUp();
-        } else {
-            actionSetting.slideDown();
-        }
-
-
-        // ✅ Bounce the button
-        let button = $(".change_setting");
-        button.addClass("bounce");
-
-        // ✅ Remove bounce effect after 1.5 seconds
-        setTimeout(() => {
-            $(".change_setting").removeClass("bounce");
-            $(".correct__header").removeClass("alert__active");
-        }, 7000);
-    }
 
     //tab view of custom field in theme editor
     $(".custom-field-box .custom-field-tabs li").on("click", function () {

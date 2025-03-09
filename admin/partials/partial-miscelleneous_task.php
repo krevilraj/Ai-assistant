@@ -41,3 +41,45 @@
         <?php ai_assistant_render_spark_button('remove_user_type'); ?>
     </div>
 </li>
+<li>
+    <span class="open__child">Create Custom Post Type</span>
+    <div class="action__setting">
+        <input type="text" name="cpt_slug" placeholder="Post Type Slug">
+        <input type="text" name="plural__label" placeholder="Plural Label">
+        <input type="text" name="singular__label" placeholder="Singular Label">
+
+        <?php ai_assistant_render_spark_button('create_custom_post_type'); ?>
+
+        <label>
+            <input type="checkbox" name="cpt__template" checked> Create Single Page
+        </label>
+        <label>
+            <input type="checkbox" name="cpt__archive_template" checked> Create Archive Page
+        </label>
+
+        <div class="d-flex no-of-posts">
+            <p>No of Post in Archive</p>
+            <input type="number" name="no_of_posts" placeholder="Post per page" min="1" value="1">
+        </div>
+
+        <h3>Supports</h3>
+        <div style="display: flex;flex-direction: column; gap: 10px;">
+            <input type="text" class="dashi_icon_field" name="dashi_icon" placeholder="Click to select icon"
+                   readonly>
+            <button type="button" class=" open-dashicon-picker button button-primary">Choose Dashicon
+            </button>
+
+        </div>
+
+        <label>
+            <input type="checkbox" name="cpt__title" checked> Title
+        </label>
+        <label>
+            <input type="checkbox" name="cpt__editor" checked> Editor
+        </label>
+        <label>
+            <input type="checkbox" name="cpt__featured_image" checked> Featured Image
+        </label>
+    </div>
+
+</li>
