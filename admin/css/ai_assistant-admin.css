@@ -462,3 +462,11 @@
     border-radius: unset;
 }
 
+.theme-editor-container > div:first-child {
+    width: 70%;
+    position: sticky;
+    top: 20px; /* Adjust based on header height */
+    align-self: flex-start; /* Ensures it doesn't stretch */
+    max-height: 100vh;
+    overflow-y: auto; /* Prevent content overflow */
+}

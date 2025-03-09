@@ -430,32 +430,38 @@ jQuery(document).ready(function ($) {
         }
 
         var fields = [];
-        var lines = textareaContent.split("\n");
-        var repeaterStack = []; // Stack to track nested repeaters
+        var repeaterStack = [];
 
-        lines.forEach(function (line) {
+        // ✅ Match full shortcode blocks using `[...]`
+        var shortcodeMatches = textareaContent.match(/\[([^\]]+)\]/g);
+        if (!shortcodeMatches) {
+            showAlert("No valid shortcodes found.", "danger");
+            return;
+        }
+
+        shortcodeMatches.forEach(function (block) {
+            block = block.trim();
+
             // ✅ Check for repeater start
-            var repeaterMatch = line.match(/\[repeater\s+name="([^"]+)"\]/);
+            var repeaterMatch = block.match(/\[repeater\s+name="([^"]+)"\]/);
             if (repeaterMatch) {
                 var repeaterName = repeaterMatch[1].trim();
-                var repeaterSlug = repeaterName.toLowerCase()
-                    .replace(/\s+/g, "_")
-                    .replace(/[^a-z0-9_]/g, "");
+                var repeaterSlug = repeaterName.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
 
                 // Push new repeater to stack
                 repeaterStack.push({
-                    key: "field_" + repeaterSlug,
+                    key: "field_" + repeaterSlug + "_" + Date.now(), // ✅ Unique Key
                     label: repeaterName,
                     name: repeaterSlug,
                     type: "repeater",
                     sub_fields: []
                 });
 
-                return; // Skip further processing for this line
+                return; // ✅ Skip further processing for this block
             }
 
             // ✅ Check for repeater end
-            if (line.match(/\[\/repeater\]/)) {
+            if (block.match(/\[\/repeater\]/)) {
                 if (repeaterStack.length > 0) {
                     var completedRepeater = repeaterStack.pop();
                     if (repeaterStack.length > 0) {
@@ -467,44 +473,47 @@ jQuery(document).ready(function ($) {
                 return;
             }
 
-            // ✅ Match normal fields including `link_array`
-            var match = line.match(/\[([a-zA-Z0-9_-]+)\s+name="([^"]+)"(?:\s+url="([^"]*)")?(?:\s+value="((?:(?!<\/?script).)*)")?(?:\s+option="([^"]*)")?\]/);
+            // ✅ Match fields, ensuring multi-line values work
+            var match = block.match(/\[([a-zA-Z0-9_-]+)\s+name="([^"]+)"(?:\s+url="([^"]*)")?(?:\s+value="((?:.|\n)*?)")?(?:\s+option="([^"]*)")?\]/);
 
             if (match) {
-                var type = match[1];  // Field type (e.g., text, textarea, checkbox, image)
+                var type = match[1];  // Field type (e.g., text, wysiwyg, checkbox, etc.)
                 var name = match[2];  // Field name (label)
                 var url = match[3] ? match[3].trim() : "";
                 var value = match[4] ? match[4].trim() : "";
                 var optionsRaw = match[5] || "";
 
-                var slug = name.toLowerCase()
-                    .replace(/\s+/g, "_")
-                    .replace(/[^a-z0-9_]/g, "");
+                var slug = name.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
 
-                // ✅ Decode HTML Entities in `value`
+                // ✅ Decode HTML Entities & Preserve Formatting
                 var decodeEntities = function (str) {
                     var textarea = document.createElement("textarea");
                     textarea.innerHTML = str;
                     return textarea.value;
                 };
 
-                value = decodeEntities(value); // ✅ Fix JSON parsing issue
+                value = decodeEntities(value); // ✅ Convert HTML entities
 
                 var field = {
-                    key: "field_" + slug,
+                    key: "field_" + slug + "_" + Date.now(), // ✅ Ensure Unique Key
                     label: name,
                     name: slug,
-                    type: type
+                    type: type,
+                    default_value: value
                 };
 
                 // ✅ Ensure link fields are properly formatted
                 if (type === "link_array" || type === "link") {
                     field.type = "link";
-                    field.return_format = "array"; // ACF return format for link array
+                    field.return_format = "array";
                     field.default_value = {
                         "url": url,
-                        "title": value // ✅ Store visible link text separately!
+                        "title": value
                     };
+                }
+
+                if (type === "image") {
+                    field.return_format = "url"; // Set return type to image URL
                 }
 
                 // ✅ Handle options for checkbox and radio
@@ -541,7 +550,7 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        var locationData = [[{param: selectedParam, operator: "==", value: selectedValue}]];
+        var locationData = [[{ param: selectedParam, operator: "==", value: selectedValue }]];
 
         var jsonData = {
             key: "group_" + Date.now(),
@@ -553,6 +562,9 @@ jQuery(document).ready(function ($) {
             instruction_placement: "label",
             hide_on_screen: []
         };
+
+        // ✅ Console Log JSON for Debugging
+        console.log(JSON.stringify(jsonData, null, 2));
 
         // ✅ Send JSON to AJAX
         $.ajax({
@@ -571,6 +583,8 @@ jQuery(document).ready(function ($) {
             }
         });
     });
+
+
 
 
     $(document).ready(function () {
