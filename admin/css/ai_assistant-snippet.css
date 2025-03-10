@@ -61,3 +61,11 @@
     background:unset;
     padding:8px;
 }
+.coder_tab__content h5{
+    margin:6px;
+    font-size:16px;
+    font-weight:bold;
+}
+.coder_tab__content ul{
+    margin:0;
+}

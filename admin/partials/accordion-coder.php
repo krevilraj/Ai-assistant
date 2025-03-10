@@ -18,6 +18,7 @@
         <div class="coder_tab__content" id="Wordpress">
             <h5>Theme</h5>
             <ul class="coding_action__list">
+                <li><button data-command="the_logo">Logo</button></li>
                 <li><button data-command="the_title">The Title</button></li>
                 <li><button data-command="the_permalink">The Permalink</button></li>
                 <li><button data-command="the_post_thumbnail">The post thumbnail</button></li>
