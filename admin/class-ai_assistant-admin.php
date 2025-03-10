@@ -82,6 +82,7 @@ class AI_Assistant_Admin
         // ✅ Check if we're on the correct admin page
         if (isset($_GET['page']) && $_GET['page'] === 'ai_assistant-theme-editor') {
             wp_enqueue_style($this->plugin_name . 'dark-theme', plugin_dir_url(__FILE__) . 'css/darktheme.css', array(), $this->version, 'all');
+            wp_enqueue_style($this->plugin_name . 'coder_snippet', plugin_dir_url(__FILE__) . 'css/ai_assistant-snippet.css', array(), $this->version, 'all');
         }
 
     }
@@ -105,9 +106,13 @@ class AI_Assistant_Admin
          * between the defined hooks and the functions defined in this
          * class.
          */
+
+
         wp_enqueue_script($this->plugin_name.'-theme-switch1', plugin_dir_url(__FILE__) . 'js/ai_assistant-theme-switch.js', array('jquery'), $this->version, false);
         wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/ai_assistant-admin.js', array('jquery'), $this->version, false);
         wp_enqueue_script($this->plugin_name . '-popup', plugin_dir_url(dirname(__FILE__)) . 'public/js/ai_assistant-popup.js', array('jquery'), $this->version, false);
+        wp_enqueue_script($this->plugin_name.'-coder-snippet', plugin_dir_url(__FILE__) . 'js/ai_assistant_snippet.js', array('jquery'), $this->version, false);
+        wp_enqueue_script($this->plugin_name.'-snippet', plugin_dir_url(__FILE__) . 'js/snippet.js', array('jquery'), $this->version, false);
         // Localize script to pass ajaxurl to JavaScript
         wp_localize_script($this->plugin_name, 'ajax_object',[
             'ajax_url' => admin_url('admin-ajax.php'),

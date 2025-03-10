@@ -1,0 +1,63 @@
+.coder_snippet .inside nav ul {
+    display: flex;
+    list-style: none;
+    padding: 0;
+}
+.coder_snippet .inside nav ul  li{
+    padding:0;
+}
+
+.coder_snippet .inside nav ul li a {
+    text-decoration: none;
+    padding: 7px;
+    display: block;
+    cursor: pointer;
+    color: #000;
+}
+.coder_snippet .inside nav ul li a:focus{
+    border:unset;
+    box-shadow: unset;
+}
+
+.coder_snippet .inside nav ul li a.active {
+    color: #0073aa;
+    background: #eee;
+}
+
+.coder_snippet .inside .coder_tab__content {
+    display: none;
+    margin-top: 15px;
+}
+
+.coder_snippet .inside .coding_action__list {
+    list-style: none;
+    padding: 0;
+}
+
+.coder_snippet .inside .coding_action__list li {
+    margin: 5px 0;
+}
+
+.coder_snippet .inside button {
+    padding: 8px 12px;
+    border: none;
+    background: #ddd;
+    cursor: pointer;
+}
+
+.coder_snippet .inside button:hover {
+    background: #ccc;
+}
+.coding_action__list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:4px;
+}
+.coder_snippet ul.coding_action__list li{
+    padding:0;
+    border:unset;
+}
+.coder_snippet ul.coding_action__list li button{
+    background:unset;
+    padding:8px;
+}

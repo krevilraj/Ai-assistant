@@ -53,6 +53,24 @@ jQuery(document).ready(function ($) {
             }
         });
 
+        // ✅ Function to insert text at the cursor position
+        window.replaceSelectedTextInsideEditor = function (newText, message) {
+            if (!editor) {
+                console.warn("🚨 CodeMirror editor not detected!");
+                return;
+            }
+
+            if (!window.selectedText) {
+                let cursor = editor.getCursor();
+                editor.replaceRange(newText, cursor);
+                editor.setCursor({ line: cursor.line, ch: cursor.ch + newText.length });
+                showAlert(message || "Code inserted at cursor position!", "success");
+            } else {
+                editor.replaceSelection(newText);
+                editor.focus();
+            }
+        };
+
         // ✅ Function to replace selected text
         window.replaceSelectedTextInEditor = function (newText, message) {
             if (!window.selectedText) {
