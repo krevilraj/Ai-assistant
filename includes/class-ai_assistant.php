@@ -86,6 +86,7 @@ class AI_Assistant
         add_action('wp_ajax_get_custom_fields', [$this, 'get_custom_fields']);
         add_action('wp_ajax_save_codemirror_theme', [$this, 'save_codemirror_theme']);
         add_action('admin_body_class', [$this, 'add_dark_theme_body_class']);
+        add_action('wp_ajax_ai_assistant_create_template_part', [$this, 'ai_assistant_create_template_part']);
     }
 
     function add_dark_theme_body_class($classes) {
@@ -1201,6 +1202,39 @@ PHP;
             wp_send_json_error("❌ Failed to delete role '{$role}'.");
         }
     }
+
+
+    function ai_assistant_create_template_part() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("Unauthorized access.");
+        }
+
+        if (empty($_POST['filename']) || empty($_POST['template_content'])) {
+            wp_send_json_error("Filename or template content is missing.");
+        }
+
+        $filename = sanitize_file_name($_POST['filename']);
+        $template_content = stripslashes($_POST['template_content']);
+
+        $theme_dir = get_template_directory();
+        $partial_dir = $theme_dir . '/partials';
+
+        // Ensure the 'partial' directory exists
+        if (!file_exists($partial_dir)) {
+            wp_mkdir_p($partial_dir);
+        }
+
+        $file_path = $partial_dir . "/partial-{$filename}.php";
+
+        // Attempt to create and write to the file
+        if (file_put_contents($file_path, $template_content) === false) {
+            wp_send_json_error("Failed to create template file.");
+        }
+
+        wp_send_json_success("Template file created successfully: partial-{$filename}.php");
+    }
+
+
 
 
 }

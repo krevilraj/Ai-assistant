@@ -79,11 +79,13 @@ jQuery(document).ready(function ($) {
 });
 function insertSnippet(code, offsetOrCallback, callback) {
     if (typeof replaceSelectedTextInsideEditor === "function") {
+        let selectedContent = window.selectedText ? window.selectedText.trim() : "";
         let cursorIndex = code.indexOf("@cursor@");
         let isMultiLine = cursorIndex !== -1;
-
+        code = code.replace("@content@", selectedContent); // Remove @cursor@ placeholder
         if (isMultiLine) {
             code = code.replace("@cursor@", ""); // Remove @cursor@ placeholder
+
         }
 
         replaceSelectedTextInsideEditor(code, "");
@@ -97,6 +99,11 @@ function insertSnippet(code, offsetOrCallback, callback) {
                     let lines = code.substring(0, cursorIndex).split("\n");
                     let cursorLine = cursor.line + lines.length - 1;
                     let cursorCh = lines[lines.length - 1].length;
+
+                    console.log("cursorIndex: "+cursorIndex);
+                    console.log(lines);
+                    console.log("2 cursorLine: "+cursorLine);
+                    console.log("3 cursorCh: "+cursorCh);
 
                     editor.setCursor({ line: cursorLine, ch: cursorCh });
                 } else if (typeof offsetOrCallback === "number") {
@@ -116,3 +123,12 @@ function insertSnippet(code, offsetOrCallback, callback) {
         console.warn("🚨 replaceSelectedTextInsideEditor function is missing!");
     }
 }
+
+
+
+
+
+
+
+
+

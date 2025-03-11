@@ -22,12 +22,26 @@
                 <li><button data-command="the_title">The Title</button></li>
                 <li><button data-command="the_permalink">The Permalink</button></li>
                 <li><button data-command="the_post_thumbnail">The post thumbnail</button></li>
+                <li><button data-command="the_content">The Content</button></li>
                 <li><button data-command="the_date">The Date</button></li>
                 <li><button data-command="the_excerpt">The Excerpt</button></li>
+                <li><button data-command="get_template_part">Get Template Part</button></li>
             </ul>
             <h5>ACF</h5>
             <ul class="coding_action__list">
                 <li><button data-command="the_field">The Field</button></li>
+                <li><button data-command="the_field_title">The Field Title</button></li>
+                <li><button data-command="the_field_description">The Field Description</button></li>
+                <li><button data-command="the_field_image">The Field Image</button></li>
+                <li><button data-command="the_field_link">The Field Link</button></li>
+                <li><button data-command="the_field_link_array">The Field Link Array</button></li>
+                <li><button data-command="if_get_field">If Get Field</button></li>
+
+            </ul>
+
+            <h5>PHP</h5>
+            <ul class="coding_action__list">
+                <li><button data-command="today_date">Today Date</button></li>
                 <li><button data-command="the_field_title">The Field Title</button></li>
                 <li><button data-command="the_field_description">The Field Description</button></li>
                 <li><button data-command="the_field_image">The Field Image</button></li>

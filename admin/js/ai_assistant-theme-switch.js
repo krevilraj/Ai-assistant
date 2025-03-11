@@ -12,23 +12,27 @@ jQuery(document).ready(function ($) {
 
         let savedTheme = ajax_object.saved_theme || "default"; // ✅ Load saved theme from wp_options
 
+
         var editor = wp.CodeMirror.fromTextArea(document.getElementById("theme-file-editor"), {
-            mode: {
-                name: "application/x-httpd-php", // ✅ Supports PHP + HTML + CSS + JS
-                startOpen: true
-            },
+            mode: "php", // ✅ Supports PHP, HTML, CSS, and JS (WordPress uses this)
             lineNumbers: true,
             lineWrapping: true,
             indentUnit: 4,
             tabSize: 4,
             theme: savedTheme, // ✅ Apply saved theme
             matchBrackets: true, // ✅ Match `{}`, `()`, `[]`
-            matchTags: {bothTags: true}, // ✅ Match opening/closing HTML tags
+            matchTags: { bothTags: true }, // ✅ Ensures `<div>` and `</div>` matching
             autoCloseBrackets: true, // ✅ Auto-close `{}`, `()`, `[]`
             autoCloseTags: true, // ✅ Auto-close `<div>`, `<span>`, etc.
             styleActiveLine: true, // ✅ Highlights active line
-            extraKeys: {"Ctrl-Space": "autocomplete"} // ✅ Enables autocomplete
+            extraKeys: { "Ctrl-Space": "autocomplete" } // ✅ Enables autocomplete
         });
+
+// ✅ Force a refresh to fix possible rendering issues
+        setTimeout(() => {
+            editor.refresh();
+        }, 500);
+
 
         // ✅ Set custom height
         editor.setSize("100%", "1000px");

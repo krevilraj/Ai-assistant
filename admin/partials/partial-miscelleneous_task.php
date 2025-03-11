@@ -83,3 +83,12 @@
     </div>
 
 </li>
+<li>
+    <span class="open__child">Create Template Part</span>
+    <div class="action__setting">
+        <input type="text" class="" name="filename" placeholder="Filename"> <br><br>
+        <textarea name="create_template_part" id="" cols="30" rows="10"
+                  placeholder="Put he content to create seperate template"></textarea>
+        <?php ai_assistant_render_spark_button('create_template_part'); ?>
+    </div>
+</li>

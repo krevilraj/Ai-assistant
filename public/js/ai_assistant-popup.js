@@ -113,7 +113,7 @@ jQuery(document).ready(function ($) {
 
         // ✅ Replace selected text in the editor with PHP repeater loop
         if (typeof replaceSelectedTextInEditor === "function" && window.selectedText) {
-            replaceSelectedTextInEditor(phpRepeaterCode,"Code copied!! Press Ctrl + V to paste.");
+            replaceSelectedTextInEditor(phpRepeaterCode, "Code copied!! Press Ctrl + V to paste.");
         }
 
         // ✅ Extract all `name` attributes inside the repeater (EXCLUDE REPEATER NAME)
@@ -177,7 +177,7 @@ jQuery(document).ready(function ($) {
                     }
 
                     if (typeof replaceSelectedTextInEditor === "function") {
-                        replaceSelectedTextInEditor(phpSubFieldCode,"Code copied!! Press Ctrl + V to paste.");
+                        replaceSelectedTextInEditor(phpSubFieldCode, "Code copied!! Press Ctrl + V to paste.");
                     }
                 });
 
@@ -358,7 +358,7 @@ jQuery(document).ready(function ($) {
         `.trim();
 
             if (typeof replaceSelectedTextInEditor === "function") {
-                replaceSelectedTextInEditor(phpLinkArrayCode,"✅ Link field added successfully!");
+                replaceSelectedTextInEditor(phpLinkArrayCode, "✅ Link field added successfully!");
             }
             sourceTextarea.value = "";
             return;
@@ -370,7 +370,7 @@ jQuery(document).ready(function ($) {
 
         if (typeof replaceSelectedTextInEditor === "function") {
             let message = `✅ Field '${nameAttribute}' added successfully!`;
-            replaceSelectedTextInEditor(phpFieldCode,message);
+            replaceSelectedTextInEditor(phpFieldCode, message);
         }
     });
 
@@ -550,7 +550,7 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        var locationData = [[{ param: selectedParam, operator: "==", value: selectedValue }]];
+        var locationData = [[{param: selectedParam, operator: "==", value: selectedValue}]];
 
         var jsonData = {
             key: "group_" + Date.now(),
@@ -583,8 +583,6 @@ jQuery(document).ready(function ($) {
             }
         });
     });
-
-
 
 
     $(document).ready(function () {
@@ -637,7 +635,6 @@ jQuery(document).ready(function ($) {
                 }
             }
         });
-
 
 
         function generateParagraphFromShortcodes(shortcodes) {
@@ -1086,6 +1083,7 @@ jQuery(document).ready(function ($) {
         create_user_type: handleCreateUserType,
         remove_user_type: handleDeleteUserType,
         change__admin_page_link: handleAdminUrl,
+        create_template_part: handleTemplatePart,
         // ⚡️ Add new actions here without modifying main event handler
     };
 
@@ -1256,7 +1254,7 @@ jQuery(document).ready(function ($) {
 
                 // ✅ Replace selected menu HTML with the WordPress menu code
                 if (typeof replaceSelectedTextInEditor === "function") {
-                    replaceSelectedTextInEditor(response.data.menu_code,"Wordpress menu copied!! Press Ctrl + V to paste.");
+                    replaceSelectedTextInEditor(response.data.menu_code, "Wordpress menu copied!! Press Ctrl + V to paste.");
                 }
             } else {
                 showAlert(response.data, "danger");
@@ -1332,6 +1330,41 @@ jQuery(document).ready(function ($) {
         // Show the PHP code in an alert
         showAlert(`✅ Generated PHP Code:\n${phpCode}`, "success");
     }
+
+    function handleTemplatePart(_this, $) {
+        var selectedContent = window.selectedText ? window.selectedText.trim() : "";
+        let templateContent;
+        if (selectedContent) {
+            templateContent = selectedContent;
+            console.log('enter');
+        } else {
+            templateContent = _this.closest('li').find('textarea[name="create_template_part"]').val().trim();
+            console.log('enter2');
+        }
+        console.log(templateContent);
+
+        const filename = _this.closest('li').find('input[name="filename"]').val().trim();
+        if (!templateContent) return showAlert("❌ Template content cannot be empty. Either select or put the content", "danger");
+
+        sendAjax({
+            action: "ai_assistant_create_template_part",
+            template_content: templateContent,
+            filename: filename
+        }, _this, function(response) {
+            if (response.success) {
+                // ✅ Replace selected content with `get_template_part`
+                const templatePartCode = `<?php get_template_part('partials/partial','${filename}'); ?>`;
+
+                if (typeof replaceSelectedTextInEditor === "function") {
+                    replaceSelectedTextInEditor(templatePartCode, "✅ Template part inserted! Press Ctrl + V to paste.");
+                    _this.closest('li').find('textarea[name="create_template_part"]').val("")
+                } else {
+                    showAlert("⚠️ Error: replaceSelectedTextInEditor function not found!", "warning");
+                }
+            }
+        });
+    }
+
 
 });
 
