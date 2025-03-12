@@ -470,3 +470,8 @@
     max-height: 100vh;
     overflow-y: auto; /* Prevent content overflow */
 }
+.editor__header{
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+}

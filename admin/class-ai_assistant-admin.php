@@ -124,7 +124,10 @@ class AI_Assistant_Admin
 
         // Localize script for JS usage
         wp_add_inline_script('code-editor', 'jQuery(document).ready(function($) { aiAssistantInitEditor(); });');
+        if (isset($_GET['page']) && $_GET['page'] === 'ai_assistant-theme-editor') {
 
+
+        }
 
 
 

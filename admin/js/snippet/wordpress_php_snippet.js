@@ -9,6 +9,7 @@ const wordpressSnippetHandlers = {
     the_field_description: () => insertSnippetV2(`<?php the_field('description@cursor@'); ?>`),
     the_field_image: () => insertSnippetV2(`<?php the_field('image@cursor@'); ?>`),
     the_field_link: () => insertSnippetV2(`<?php the_field('link@cursor@'); ?>`),
+    template_url: () => insertSnippetV2(`<?php bloginfo('template_url'); ?>@cursor@`),
     the_field_link_array: () => insertSnippetV2(`<?php
     $link_array = get_field('@cursor@'); 
     if ($link_array && isset($link_array['url'])) {
@@ -23,6 +24,27 @@ const wordpressSnippetHandlers = {
     today_date: () => insertSnippetV2(`<?php echo date('Y@cursor@'); ?>`),
     the_content: () => insertSnippetV2(`<?php the_content(@cursor@); ?>`),
     get_template_part: () => insertSnippetV2(` <?php get_template_part('partials/partial','@cursor@'); ?>`),
+    wp_query: () => insertSnippetV2(`<?php
+$args = array(
+    'post_type'      => '@cursor@',
+    'posts_per_page' => -1, // ✅ Fetch all banners
+    'post_status'    => 'publish',
+    'orderby'        => 'date',
+    'order'          => 'DESC'
+);
+
+$query = new WP_Query($args);
+
+if ($query->have_posts()) :
+    while ($query->have_posts()) : $query->the_post(); ?>
+        
+        @content@
+
+    <?php endwhile;
+    wp_reset_postdata(); // ✅ Reset query
+endif;
+?>
+`),
     if_get_field: () => {
         insertSnippetV2(`
         <?php if (get_field('@cursor@')) { ?>
