@@ -87,7 +87,57 @@ class AI_Assistant
         add_action('wp_ajax_save_codemirror_theme', [$this, 'save_codemirror_theme']);
         add_action('admin_body_class', [$this, 'add_dark_theme_body_class']);
         add_action('wp_ajax_ai_assistant_create_template_part', [$this, 'ai_assistant_create_template_part']);
+        add_action('wp_ajax_upload_theme_image', [$this, 'upload_theme_image']);
     }
+
+    function upload_theme_image() {
+        if (!isset($_POST['image_path'])) {
+            wp_send_json_error("No image path provided.");
+            return;
+        }
+
+        $image_path = sanitize_text_field($_POST['image_path']);
+        $theme_path = get_stylesheet_directory(); // Base theme directory
+
+        // ✅ Remove leading slashes to normalize path
+        $relative_path = ltrim($image_path, '/');
+        $full_path = $theme_path . '/' . $relative_path;
+
+        // ✅ Ensure file exists
+        if (!file_exists($full_path)) {
+            wp_send_json_error("Image not found in theme folder.");
+            return;
+        }
+
+        // ✅ Prepare image for upload
+        $file_array = array(
+            'name'     => basename($full_path),
+            'tmp_name' => $full_path
+        );
+
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+        require_once(ABSPATH . 'wp-admin/includes/media.php');
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+
+        // ✅ Upload the file to WordPress media library
+        $attachment_id = media_handle_sideload($file_array, 0);
+
+        if (is_wp_error($attachment_id)) {
+            wp_send_json_error("Image upload failed.");
+            return;
+        }
+
+        $image_url = wp_get_attachment_url($attachment_id);
+
+        // ✅ Return success with the new image ID and URL
+        wp_send_json_success(array(
+            'image_id'  => $attachment_id,
+            'image_url' => $image_url
+        ));
+    }
+
+
+
 
     function add_dark_theme_body_class($classes) {
         // ✅ Check if we're on the "ai_assistant-theme-editor" admin page
@@ -185,7 +235,7 @@ class AI_Assistant
         $this->loader->add_action('plugins_loaded', $plugin_i18n, 'load_plugin_textdomain');
     }
 
-    public function save_acf_json(){
+    public function save_acf_json() {
         if (!isset($_POST['json_data']) || !isset($_POST['location_data'])) {
             wp_send_json_error("Invalid request.");
             return;
@@ -202,7 +252,7 @@ class AI_Assistant
         // Include the location rules in the JSON data
         $json_data['location'] = $location_data;
 
-        $theme_dir = get_stylesheet_directory() . '/acf-json'; // Save inside the active theme
+        $theme_dir = get_stylesheet_directory() . '/acf-json'; // Save inside active theme
 
         // Ensure the directory exists
         if (!file_exists($theme_dir)) {
@@ -213,11 +263,18 @@ class AI_Assistant
 
         // Write JSON file
         if (file_put_contents($file_path, json_encode($json_data, JSON_PRETTY_PRINT))) {
-            wp_send_json_success("ACF JSON with location rules saved in theme folder!");
+
+            // ✅ Auto-import the field group into ACF
+            if (function_exists('acf_import_field_group')) {
+                acf_import_field_group($json_data);
+            }
+
+            wp_send_json_success("ACF JSON saved & imported automatically!");
         } else {
             wp_send_json_error("Failed to save JSON.");
         }
     }
+
 
     public function ai_assistant_save_file() {
         // ✅ Check user capability

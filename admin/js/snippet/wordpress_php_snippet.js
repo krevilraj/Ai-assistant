@@ -1,14 +1,14 @@
 const wordpressSnippetHandlers = {
-    the_title: () => insertSnippet(`<?php the_title(); ?>`, 5),
-    the_permalink: () => insertSnippet(`<?php the_permalink(); ?>`, 5),
-    the_post_thumbnail: () => insertSnippet(`<?php echo get_the_post_thumbnail_url(get_the_ID(), 'full'); ?>`, 6),
-    the_date: () => insertSnippet(`<?php echo get_the_date() ;?>`, 5),
-    the_excerpt: () => insertSnippet(`<?php the_excerpt(); ?>`, 5),
-    the_field: () => insertSnippet(`<?php the_field(''); ?>`, 6),
-    the_field_title: () => insertSnippet(`<?php the_field('title'); ?>`, 6),
-    the_field_description: () => insertSnippet(`<?php the_field('description'); ?>`, 6),
-    the_field_image: () => insertSnippet(`<?php the_field('image'); ?>`, 6),
-    the_field_link: () => insertSnippet(`<?php the_field('link'); ?>`, 6),
+    the_title: () => insertSnippetV2(`<?php the_title(@cursor@); ?>`),
+    the_permalink: () => insertSnippetV2(`<?php the_permalink(@cursor@); ?>`),
+    the_post_thumbnail: () => insertSnippetV2(`<?php echo get_the_post_thumbnail_url(get_the_ID(), 'full@cursor@'); ?>`),
+    the_date: () => insertSnippetV2(`<?php echo get_the_date('@cursor@') ;?>`),
+    the_excerpt: () => insertSnippetV2(`<?php the_excerpt(@cursor@); ?>`),
+    the_field: () => insertSnippetV2(`<?php the_field('@cursor@'); ?>`),
+    the_field_title: () => insertSnippetV2(`<?php the_field('title@cursor@'); ?>`),
+    the_field_description: () => insertSnippetV2(`<?php the_field('description@cursor@'); ?>`),
+    the_field_image: () => insertSnippetV2(`<?php the_field('image@cursor@'); ?>`),
+    the_field_link: () => insertSnippetV2(`<?php the_field('link@cursor@'); ?>`),
     the_field_link_array: () => insertSnippetV2(`<?php
     $link_array = get_field('@cursor@'); 
     if ($link_array && isset($link_array['url'])) {
@@ -20,9 +20,9 @@ const wordpressSnippetHandlers = {
         <?php
     }
 ?>`),
-    today_date: () => insertSnippet(`<?php echo date('Y'); ?>`, 6),
-    the_content: () => insertSnippet(`<?php the_content(); ?>`, 6),
-    get_template_part: () => insertSnippet(` <?php get_template_part('partials/partial',''); ?>`, 6),
+    today_date: () => insertSnippetV2(`<?php echo date('Y@cursor@'); ?>`),
+    the_content: () => insertSnippetV2(`<?php the_content(@cursor@); ?>`),
+    get_template_part: () => insertSnippetV2(` <?php get_template_part('partials/partial','@cursor@'); ?>`),
     if_get_field: () => {
         insertSnippetV2(`
         <?php if (get_field('@cursor@')) { ?>
@@ -30,13 +30,16 @@ const wordpressSnippetHandlers = {
         <?php } ?>
     `);
     },
-    the_logo: () => insertSnippet(`<?php 
+    the_logo: () => insertSnippetV2(`<?php 
     if (has_custom_logo()) {
         $custom_logo_id = get_theme_mod('custom_logo');
         $logo = wp_get_attachment_image($custom_logo_id, 'full', false, array('class' => 'img-fluid'));
         echo $logo;
     }`),
-    page_link: (link) => insertSnippet(`${link}`, 1),
+    page_link: (link) => insertSnippetV2(`${link}@cursor@`, 1),
+    first_class: () => insertSnippetV2(`<?php if($i==0) echo '@content@@cursor@';?>`),
+    even_class: () => insertSnippetV2(`<?php if($i%2==0) echo '@content@@cursor@';?>`),
+    odd_class: () => insertSnippetV2(`<?php if($i%2!=0) echo '@content@@cursor@';?>`),
 
 
 

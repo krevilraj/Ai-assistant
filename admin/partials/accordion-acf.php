@@ -131,12 +131,10 @@
 
                     </div>
 
-                    <button id="create-json-btn" style="margin-top: 10px;">Create JSON</button>
+                    <button id="create-json-btn" style="margin-top: 10px;">Create Custom Field</button>
                 </div>
             </div>
 
-            <!-- Apply Custom Field -->
-            <!-- Apply Custom Field -->
             <!-- Apply Custom Field -->
             <div id="apply-field" class="tab-pane">
                 <h3>Apply Custom Fields</h3>

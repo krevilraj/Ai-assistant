@@ -52,11 +52,9 @@
             <h5>PHP</h5>
             <ul class="coding_action__list">
                 <li><button data-command="today_date">Today Date</button></li>
-                <li><button data-command="the_field_title">The Field Title</button></li>
-                <li><button data-command="the_field_description">The Field Description</button></li>
-                <li><button data-command="the_field_image">The Field Image</button></li>
-                <li><button data-command="the_field_link">The Field Link</button></li>
-                <li><button data-command="the_field_link_array">The Field Link Array</button></li>
+                <li><button data-command="first_class">First Class</button></li>
+                <li><button data-command="even_class">Even Class</button></li>
+                <li><button data-command="odd_class">Odd Class</button></li>
 
             </ul>
         </div>

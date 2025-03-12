@@ -270,12 +270,49 @@ jQuery(document).ready(function ($) {
 
     // Update the textarea with custom behavior for checkbox and radio buttons
     $(".custom-toolbar-btn").on("click", async function () {
+        // ✅ Update textarea
+        var textarea = $("#field__acf")[0];
+        textarea.value = "Please wait image is uploading to Media Library";
         var shortcodeType = $(this).attr("data-shortcode");
         var shortcode = "";
 
-        if (shortcodeType === "checkbox" || shortcodeType === "radio") {
+        // ✅ Handle Image Upload (Dynamic Theme Folder Path)
+        if (shortcodeType === "image" && window.selectedText) {
+            let imagePath = window.selectedText.trim();
+
+            // ✅ Check if path starts without "http" (means it's a local theme image)
+            if (!imagePath.startsWith("http")) {
+                try {
+                    let response = await $.ajax({
+                        url: ajax_object.ajax_url,
+                        type: "POST",
+                        data: {
+                            action: "upload_theme_image",
+                            image_path: imagePath
+                        }
+                    });
+
+                    if (response.success) {
+                        shortcode = `[image name="" value="${response.data.image_id}"]`;
+                    } else {
+                        showAlert("❌ Failed to upload image: " + response.data, "danger");
+                        return;
+                    }
+                } catch (error) {
+                    showAlert("❌ AJAX request failed.", "danger");
+                    return;
+                }
+            } else {
+                // ✅ If not a local image, use it as a URL
+                shortcode = `[image name="" value="${imagePath}"]`;
+            }
+        }
+
+        // ✅ Handle checkbox & radio
+        else if (shortcodeType === "checkbox" || shortcodeType === "radio") {
             shortcode = `[${shortcodeType} name="" option=""]`;
         }
+
         // ✅ Handle link_array safely
         else if (shortcodeType === "link_array") {
             if (!window.selectedText || !window.selectedText.match(/<a\s+[^>]*href=["'][^"']+["'][^>]*>.*<\/a>/i)) {
@@ -283,18 +320,19 @@ jQuery(document).ready(function ($) {
                 return;
             }
 
-            // ✅ Extract href and text inside <a> tag
             let linkMatch = window.selectedText.match(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/i);
             let hrefValue = linkMatch ? linkMatch[1].trim() : "";
-            let anchorText = linkMatch ? linkMatch[2].trim().replace(/"/g, '&quot;') : ""; // ✅ Escape double quotes
+            let anchorText = linkMatch ? linkMatch[2].trim().replace(/"/g, '&quot;') : "";
 
-            // ✅ Generate safe `link_array` shortcode
             shortcode = `[link_array name="" url="${hrefValue}" value="${anchorText}"]`;
-        } else {
+        }
+
+        // ✅ Default Shortcode
+        else {
             shortcode = `[${shortcodeType} name=""${window.selectedText ? ` value="${window.selectedText.replace(/"/g, '&quot;')}"` : ""}]`;
         }
 
-        var textarea = $("#field__acf")[0];
+
         textarea.value = shortcode;
 
         // ✅ Place cursor inside `name=""`
@@ -302,6 +340,7 @@ jQuery(document).ready(function ($) {
         textarea.setSelectionRange(cursorPosition, cursorPosition);
         textarea.focus();
     });
+
 
     $("#add__field_to_textarea").on("click", function () {
         var sourceTextarea = $("#field__acf")[0];
@@ -363,9 +402,14 @@ jQuery(document).ready(function ($) {
             sourceTextarea.value = "";
             return;
         }
+        // ✅ Handle `image` type
+        if (sourceValue.startsWith("[image")) {
+            var phpFieldCode = `<?php echo esc_url(is_numeric(get_field('${slug}')) ? wp_get_attachment_url(get_field('${slug}')) : get_field('${slug}')); ?>`;
+        } else {
+            // ✅ Create the PHP field output for normal fields
+            var phpFieldCode = `<?php the_field('${slug}'); ?>`;
+        }
 
-        // ✅ Create the PHP field output for normal fields
-        var phpFieldCode = `<?php the_field('${slug}'); ?>`;
         sourceTextarea.value = "";
 
         if (typeof replaceSelectedTextInEditor === "function") {
@@ -416,6 +460,30 @@ jQuery(document).ready(function ($) {
     });
 
     // Handle JSON creation button
+    function formatLabel(name) {
+        return name
+            .toLowerCase() // Convert to lowercase
+            .replace(/[^a-zA-Z\s]/g, "") // Remove numbers & special characters
+            .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
+    }
+
+    function generateUniqueKey() {
+        return 'field_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    }
+
+    $("#field__acf").on("keypress", function (event) {
+        if (event.which === 13) { // Check if Enter key is pressed
+            event.preventDefault(); // Prevent new line in textarea
+            $("#add__field_to_textarea").click(); // Trigger button click
+        }
+    });
+    $("#field__rep_acf").on("keypress", function (event) {
+        if (event.which === 13) { // Check if Enter key is pressed
+            event.preventDefault(); // Prevent new line in textarea
+            $("#add__rep_field_to_textarea").click(); // Trigger button click
+        }
+    });
+
     $("#create-json-btn").on("click", function () {
         var group_field = $("#group__field");
         if (!group_field.val().trim()) {
@@ -432,7 +500,6 @@ jQuery(document).ready(function ($) {
         var fields = [];
         var repeaterStack = [];
 
-        // ✅ Match full shortcode blocks using `[...]`
         var shortcodeMatches = textareaContent.match(/\[([^\]]+)\]/g);
         if (!shortcodeMatches) {
             showAlert("No valid shortcodes found.", "danger");
@@ -442,25 +509,22 @@ jQuery(document).ready(function ($) {
         shortcodeMatches.forEach(function (block) {
             block = block.trim();
 
-            // ✅ Check for repeater start
             var repeaterMatch = block.match(/\[repeater\s+name="([^"]+)"\]/);
             if (repeaterMatch) {
                 var repeaterName = repeaterMatch[1].trim();
                 var repeaterSlug = repeaterName.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
 
-                // Push new repeater to stack
                 repeaterStack.push({
-                    key: "field_" + repeaterSlug + "_" + Date.now(), // ✅ Unique Key
-                    label: repeaterName,
+                    key: generateUniqueKey(), // ✅ Unique Key
+                    label: formatLabel(repeaterName),
                     name: repeaterSlug,
                     type: "repeater",
                     sub_fields: []
                 });
 
-                return; // ✅ Skip further processing for this block
+                return;
             }
 
-            // ✅ Check for repeater end
             if (block.match(/\[\/repeater\]/)) {
                 if (repeaterStack.length > 0) {
                     var completedRepeater = repeaterStack.pop();
@@ -473,36 +537,33 @@ jQuery(document).ready(function ($) {
                 return;
             }
 
-            // ✅ Match fields, ensuring multi-line values work
             var match = block.match(/\[([a-zA-Z0-9_-]+)\s+name="([^"]+)"(?:\s+url="([^"]*)")?(?:\s+value="((?:.|\n)*?)")?(?:\s+option="([^"]*)")?\]/);
 
             if (match) {
-                var type = match[1];  // Field type (e.g., text, wysiwyg, checkbox, etc.)
-                var name = match[2];  // Field name (label)
+                var type = match[1];
+                var name = match[2];
                 var url = match[3] ? match[3].trim() : "";
                 var value = match[4] ? match[4].trim() : "";
                 var optionsRaw = match[5] || "";
 
                 var slug = name.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
 
-                // ✅ Decode HTML Entities & Preserve Formatting
                 var decodeEntities = function (str) {
                     var textarea = document.createElement("textarea");
                     textarea.innerHTML = str;
                     return textarea.value;
                 };
 
-                value = decodeEntities(value); // ✅ Convert HTML entities
+                value = decodeEntities(value);
 
                 var field = {
-                    key: "field_" + slug + "_" + Date.now(), // ✅ Ensure Unique Key
-                    label: name,
+                    key: generateUniqueKey(), // ✅ Unique Key
+                    label: formatLabel(name),
                     name: slug,
                     type: type,
                     default_value: value
                 };
 
-                // ✅ Ensure link fields are properly formatted
                 if (type === "link_array" || type === "link") {
                     field.type = "link";
                     field.return_format = "array";
@@ -513,10 +574,10 @@ jQuery(document).ready(function ($) {
                 }
 
                 if (type === "image") {
-                    field.return_format = "url"; // Set return type to image URL
+                    field.return_format = "url";
+                    field.default_value = value;
                 }
 
-                // ✅ Handle options for checkbox and radio
                 if ((type === "checkbox" || type === "radio") && optionsRaw) {
                     field.choices = optionsRaw.split("|").reduce(function (acc, option) {
                         var trimmedOption = option.trim();
@@ -527,7 +588,6 @@ jQuery(document).ready(function ($) {
                     }, {});
                 }
 
-                // ✅ If inside a repeater, add to sub_fields of the last repeater in stack
                 if (repeaterStack.length > 0) {
                     repeaterStack[repeaterStack.length - 1].sub_fields.push(field);
                 } else {
@@ -541,7 +601,6 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        // ✅ Get the selected location rule
         var selectedParam = $(".acf-location-param").val();
         var selectedValue = $(".acf-location-value").val();
 
@@ -550,10 +609,10 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        var locationData = [[{param: selectedParam, operator: "==", value: selectedValue}]];
+        var locationData = [[{ param: selectedParam, operator: "==", value: selectedValue }]];
 
         var jsonData = {
-            key: "group_" + Date.now(),
+            key: generateUniqueKey(), // ✅ Unique Key
             title: group_field.val().trim(),
             fields: fields,
             location: locationData,
@@ -563,10 +622,8 @@ jQuery(document).ready(function ($) {
             hide_on_screen: []
         };
 
-        // ✅ Console Log JSON for Debugging
         console.log(JSON.stringify(jsonData, null, 2));
 
-        // ✅ Send JSON to AJAX
         $.ajax({
             url: ajax_object.ajax_url,
             type: "POST",
@@ -583,6 +640,9 @@ jQuery(document).ready(function ($) {
             }
         });
     });
+
+
+
 
 
     $(document).ready(function () {

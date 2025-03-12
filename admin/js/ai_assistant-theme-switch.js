@@ -12,20 +12,32 @@ jQuery(document).ready(function ($) {
 
         let savedTheme = ajax_object.saved_theme || "default"; // ✅ Load saved theme from wp_options
 
+        var urlParams = new URLSearchParams(window.location.search);
+        var filePath = urlParams.get("file"); // Get 'file' parameter from URL
+        var fileExtension = filePath ? filePath.split('.').pop().toLowerCase() : "";
+
+        // ✅ Determine CodeMirror mode based on file extension
+        var mode = "text/plain"; // Default mode
+        if (fileExtension === "js") mode = "javascript";
+        else if (fileExtension === "css") mode = "css";
+        else if (fileExtension === "php") mode = "php";
+        else if (fileExtension === "html" || fileExtension === "htm") mode = "htmlmixed";
 
         var editor = wp.CodeMirror.fromTextArea(document.getElementById("theme-file-editor"), {
-            mode: "php", // ✅ Supports PHP, HTML, CSS, and JS (WordPress uses this)
+            mode: mode, // ✅ Dynamic mode selection
             lineNumbers: true,
             lineWrapping: true,
             indentUnit: 4,
             tabSize: 4,
             theme: savedTheme, // ✅ Apply saved theme
-            matchBrackets: true, // ✅ Match `{}`, `()`, `[]`
-            matchTags: { bothTags: true }, // ✅ Ensures `<div>` and `</div>` matching
-            autoCloseBrackets: true, // ✅ Auto-close `{}`, `()`, `[]`
-            autoCloseTags: true, // ✅ Auto-close `<div>`, `<span>`, etc.
-            styleActiveLine: true, // ✅ Highlights active line
-            extraKeys: { "Ctrl-Space": "autocomplete" } // ✅ Enables autocomplete
+            matchBrackets: true,
+            matchTags: { bothTags: true },
+            autoCloseBrackets: true,
+            autoCloseTags: mode === "htmlmixed", // ✅ Enable only for HTML
+            styleActiveLine: true,
+            extraKeys: { "Ctrl-Space": "autocomplete" },
+
+
         });
 
 // ✅ Force a refresh to fix possible rendering issues
