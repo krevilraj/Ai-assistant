@@ -9,11 +9,12 @@ const wordpressSnippetHandlers = {
     the_field_description: () => insertSnippet(`<?php the_field('description'); ?>`, 6),
     the_field_image: () => insertSnippet(`<?php the_field('image'); ?>`, 6),
     the_field_link: () => insertSnippet(`<?php the_field('link'); ?>`, 6),
-    the_field_link_array: () => insertSnippet(`<?php
+    the_field_link_array: () => insertSnippetV2(`<?php
     $link_array = get_field('@cursor@'); 
     if ($link_array && isset($link_array['url'])) {
         $link_url = esc_url($link_array['url']); 
         ?>
+        @content@
         <?php echo $link_url; ?>
         <?php echo $link_array['title']; ?>
         <?php
@@ -23,12 +24,21 @@ const wordpressSnippetHandlers = {
     the_content: () => insertSnippet(`<?php the_content(); ?>`, 6),
     get_template_part: () => insertSnippet(` <?php get_template_part('partials/partial',''); ?>`, 6),
     if_get_field: () => {
-        insertSnippet(`
-         <?php if (get_field('@cursor@')) { ?>
+        insertSnippetV2(`
+        <?php if (get_field('@cursor@')) { ?>
             @content@
         <?php } ?>
-        `);
-    }
+    `);
+    },
+    the_logo: () => insertSnippet(`<?php 
+    if (has_custom_logo()) {
+        $custom_logo_id = get_theme_mod('custom_logo');
+        $logo = wp_get_attachment_image($custom_logo_id, 'full', false, array('class' => 'img-fluid'));
+        echo $logo;
+    }`),
+    page_link: (link) => insertSnippet(`${link}`, 1),
+
+
 
 
 };

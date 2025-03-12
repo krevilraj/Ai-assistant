@@ -38,6 +38,16 @@
                 <li><button data-command="if_get_field">If Get Field</button></li>
 
             </ul>
+            <h5>Page link</h5>
+            <ul class="coding_action__list">
+                <?php
+                $pages = get_pages();
+                foreach ($pages as $page) {
+                    $slug = '/' . get_post_field('post_name', $page->ID);
+                    echo '<li><button data-command="page_link" data-pageid="' . esc_attr($page->ID) . '" data-link="' . esc_attr($slug) . '">' . esc_html($page->post_title) . '</button></li>';
+                }
+                ?>
+            </ul>
 
             <h5>PHP</h5>
             <ul class="coding_action__list">

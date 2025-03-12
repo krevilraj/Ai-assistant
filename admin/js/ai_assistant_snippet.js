@@ -64,6 +64,12 @@ jQuery(document).ready(function ($) {
     // ✅ Snippet Click Handler
     $(document).on("click", ".coding_action__list button", function () {
         const command = $(this).data("command");
+        if(command === "page_link"){
+            const pageLink = $(this).data("link");
+            wordpressSnippetHandlers.page_link(pageLink);
+            return;
+        }
+
         const handler = snippetHandlers[command];
 
         if (typeof handler === "function") {
@@ -123,6 +129,76 @@ function insertSnippet(code, offsetOrCallback, callback) {
         console.warn("🚨 replaceSelectedTextInsideEditor function is missing!");
     }
 }
+
+function insertSnippetV2(code, offsetOrCallback, callback) {
+    if (typeof replaceSelectedTextInsideEditor === "function") {
+        let editor = window.aiAssistantEditor; // Get CodeMirror instance
+        if (!editor) {
+            console.warn("🚨 CodeMirror instance not found!");
+            return;
+        }
+
+        let doc = editor.getDoc();
+        let selectedContent = window.selectedText ? window.selectedText.trim() : "";
+
+        // ✅ Replace @content@ with selected text (if empty, keep @content@ as a placeholder)
+        if (selectedContent) {
+            code = code.replace("@content@", selectedContent);
+        }else{
+            code = code.replace("@content@", "");
+        }
+
+        // ✅ Store cursor position before insertion if no text is selected
+        let fallbackCursorPos = doc.getCursor();
+
+        // ✅ Insert modified code into the editor
+        replaceSelectedTextInsideEditor(code, "");
+
+        // ✅ Find & select @cursor@
+        setTimeout(() => {
+            selectCursorPlaceholder(fallbackCursorPos);
+        }, 50); // Small delay to ensure the editor updates
+    } else {
+        console.warn("🚨 replaceSelectedTextInsideEditor function is missing!");
+    }
+}
+
+function selectCursorPlaceholder(fallbackCursorPos) {
+    let editor = window.aiAssistantEditor;
+    if (!editor) {
+        console.warn("🚨 CodeMirror instance not found!");
+        return;
+    }
+
+    let doc = editor.getDoc();
+    let cursor = editor.getSearchCursor("@cursor@", { line: 0, ch: 0 }); // Search from the start
+
+    if (cursor.findNext()) {
+        let from = cursor.from();
+        let to = cursor.to();
+
+        doc.setSelection(from, to); // ✅ Select @cursor@
+        doc.replaceSelection(""); // ✅ Remove @cursor@
+        console.log("✅ @cursor@ selected and removed!");
+        editor.focus();
+    } else {
+        // ✅ If @cursor@ is not found, set cursor back to where it was before insertion
+        doc.setCursor(fallbackCursorPos);
+        console.log("🚨 @cursor@ not found! Cursor reset to previous position.");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
