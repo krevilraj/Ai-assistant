@@ -35,6 +35,8 @@
 
             <div class="editor__header">
                 <h2 id="file-title">Editing: <span><?php echo esc_html($file_name_display); ?></span></h2>
+
+
                 <div>
                     <input type="number" id="line-number-input" min="1" placeholder="Enter line no.">
                     <button id="go-to-line-btn">Go</button>

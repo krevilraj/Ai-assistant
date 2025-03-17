@@ -30,10 +30,7 @@
      */
 
 
-
-
 })(jQuery);
-
 
 
 jQuery(document).ready(function ($) {
@@ -138,10 +135,7 @@ jQuery(document).ready(function ($) {
     });
 
 
-
 });
-
-
 
 
 jQuery(document).ready(function ($) {
@@ -280,7 +274,7 @@ jQuery(document).ready(function ($) {
         }
 
         if (typeof replaceSelectedTextInEditor === "function") {
-            replaceSelectedTextInEditor(phpFieldCode,"Code copied!! Press Ctrl + V to paste.");
+            replaceSelectedTextInEditor(phpFieldCode, "Code copied!! Press Ctrl + V to paste.");
         }
     });
 
@@ -290,9 +284,161 @@ jQuery(document).ready(function ($) {
         let phpFieldCode = `<?php echo do_shortcode('${shortcode}'); ?>`;
 
         if (typeof replaceSelectedTextInEditor === "function") {
-            replaceSelectedTextInEditor(phpFieldCode,"Shortcode copied!! Press Ctrl+v to paste.");
+            replaceSelectedTextInEditor(phpFieldCode, "Shortcode copied!! Press Ctrl+v to paste.");
         }
     });
+
+
+    let customizerTextarea = $("#field__customizer");
+
+    // ✅ Auto-Insert Section on First Click
+    $(".customizer__btn[data-shortcode='create__section']").on("click", function () {
+        let textareaContent = customizerTextarea.val().trim();
+
+        // ✅ Check if `[section` already exists
+        if (textareaContent.includes("[section")) {
+            showAlert("⚠ A section already exists!", "danger");
+            return;
+        }
+
+        // ✅ Insert `[section]` at the beginning of the textarea
+        let sectionContent = `[section name=""]\n[/section]\n`;
+        customizerTextarea.val(sectionContent);
+
+        // ✅ Move cursor inside `name=""`
+        let cursorPosition = sectionContent.indexOf(`name=""`) + 6;
+        customizerTextarea[0].setSelectionRange(cursorPosition, cursorPosition);
+        customizerTextarea.focus();
+    });
+
+    // ✅ Insert Fields Inside Section
+    $(".customizer__btn").not("[data-shortcode='create__section']").on("click", function () {
+        let shortcodeType = $(this).attr("data-shortcode");
+        let currentContent = customizerTextarea.val().trim();
+
+        // ✅ Auto-Paste Social Section
+        if (shortcodeType === "social") {
+            let socialContent = `[section name="Social"]
+  [url name="Facebook Url"]
+  [url name="Instagram Url"]
+  [url name="Linkedin Url"]
+  [url name="Youtube"]
+[/section]`;
+
+            customizerTextarea.val(socialContent);
+            showAlert("✅ Social section added!", "success");
+            return;
+        }
+
+        // ✅ Auto-Paste Contact Section
+        if (shortcodeType === "contact") {
+            let contactContent = `[section name="Contact Information"]
+  [text name="Telephone"]
+  [text name="Telephone2"]
+  [textarea name="Address"]
+  [text name="Email"]
+[/section]`;
+
+            customizerTextarea.val(contactContent);
+            showAlert("✅ Contact Information section added!", "success");
+            return;
+        }
+
+        // ✅ Ensure section exists before inserting other fields
+        let sectionStart = currentContent.indexOf("[section");
+        let sectionEnd = currentContent.indexOf("[/section]");
+
+        if (sectionStart === -1 || sectionEnd === -1) {
+            showAlert("⚠ You must create a section first!", "danger");
+            return;
+        }
+
+        // ✅ Generate Field Shortcode
+        let shortcode = `[${shortcodeType} name=""]`;
+
+        // ✅ Insert Field Inside `[section] ... [/section]`
+        let newContent =
+            currentContent.slice(0, sectionEnd) +
+            `  ${shortcode}\n` +
+            currentContent.slice(sectionEnd);
+
+        customizerTextarea.val(newContent);
+
+        // ✅ Move cursor inside `name=""`
+        let cursorPosition = newContent.indexOf(`name=""`) + 6;
+        customizerTextarea[0].setSelectionRange(cursorPosition, cursorPosition);
+        customizerTextarea.focus();
+    });
+
+
+    // ✅ Append to `functions.php` on button click
+    $("#add__field_to_textarea").on("click", function () {
+        let customizerCode = customizerTextarea.val().trim();
+        if (!customizerCode) {
+            alert("⚠ No content to save!");
+            return;
+        }
+
+        $.ajax({
+            url: ajax_object.ajax_url, // WordPress AJAX URL
+            type: "POST",
+            data: {
+                action: "save_customizer_code",
+                customizer_code: customizerCode
+            },
+            success: function (response) {
+                alert("✅ Customizer code added to functions.php!");
+            },
+            error: function () {
+                alert("❌ Error saving to functions.php!");
+            }
+        });
+    });
+
+    $(".customizer-tabs li").on("click", function () {
+        let tab = $(this).data("tab");
+
+        // ✅ Switch active tab
+        $(".customizer-tabs li").removeClass("active");
+        $(this).addClass("active");
+
+        // ✅ Show/Hide content based on tab selection
+        $("[data-tab-content]").removeClass("active");
+        $(`[data-tab-content="${tab}"]`).addClass("active");
+    });
+
+
+
+
+    $(".accordion-toggle").on("click", function () {
+        let parentItem = $(this).closest(".accordion-item");
+        let accordionBody = parentItem.find(".accordion-body");
+
+        // ✅ Close all other sections
+        $(".accordion-item").not(parentItem).removeClass("active").find(".accordion-body").slideUp();
+
+        // ✅ Toggle active class & slide body
+        if (accordionBody.is(":visible")) {
+            accordionBody.slideUp();
+            parentItem.removeClass("active");
+        } else {
+            accordionBody.slideDown();
+            parentItem.addClass("active");
+        }
+    });
+
+    // ✅ Copy setting on button click
+    $(document).on("click", ".copy-btn", function () {
+        let settingSlug = $(this).data("slug");
+        let phpFieldCode = `<?php echo get_theme_mod('${settingSlug}'); ?>`;
+
+        if (typeof replaceSelectedTextInEditor === "function") {
+            replaceSelectedTextInEditor(phpFieldCode, "Code copied!! Press Ctrl+v to paste.");
+        }
+
+
+    });
+
 });
 
 

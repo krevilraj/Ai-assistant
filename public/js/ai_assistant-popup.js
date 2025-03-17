@@ -609,7 +609,7 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        var locationData = [[{ param: selectedParam, operator: "==", value: selectedValue }]];
+        var locationData = [[{param: selectedParam, operator: "==", value: selectedValue}]];
 
         var jsonData = {
             key: generateUniqueKey(), // ✅ Unique Key
@@ -640,9 +640,6 @@ jQuery(document).ready(function ($) {
             }
         });
     });
-
-
-
 
 
     $(document).ready(function () {
@@ -968,38 +965,6 @@ jQuery(document).ready(function ($) {
         populateValueDropdown($(this).val());
     });
 
-
-});
-
-function showAlert(message, type) {
-    // Remove existing alerts
-    jQuery(".custom-alert").remove();
-
-    // Create alert element
-    var alertBox = jQuery('<div class="custom-alert ' + type + '">' + message + '</div>');
-
-    // Append to body
-    jQuery("body").append(alertBox);
-
-    // Slide in
-    setTimeout(function () {
-        alertBox.css("right", "20px");
-    }, 100); // Slight delay for smooth transition
-
-    // Slide out after 3 seconds
-    setTimeout(function () {
-        alertBox.css("right", "-400px");
-        setTimeout(function () {
-            alertBox.remove(); // Remove from DOM after slide out
-        }, 500); // Wait for transition to finish
-    }, 3000); // Stay for 3 seconds
-
-    setTimeout(function () {
-        jQuery(".icon-wrapper").removeClass('anim');
-    }, 2000);
-}
-
-jQuery(document).ready(function ($) {
     function displayGroupedFields(fields) {
         const container = $(".acf-field-container");
         container.empty();
@@ -1062,7 +1027,6 @@ jQuery(document).ready(function ($) {
         });
     });
 
-
     // reset the permalink select the post name default
     $("#reset_permalink").on("click", function () {
         if (confirm("Are you sure you want to reset permalinks to 'Post name'?")) {
@@ -1097,7 +1061,37 @@ jQuery(document).ready(function ($) {
             actionSetting.slideDown();
         }
     });
+
 });
+
+function showAlert(message, type) {
+    // Remove existing alerts
+    jQuery(".custom-alert").remove();
+
+    // Create alert element
+    var alertBox = jQuery('<div class="custom-alert ' + type + '">' + message + '</div>');
+
+    // Append to body
+    jQuery("body").append(alertBox);
+
+    // Slide in
+    setTimeout(function () {
+        alertBox.css("right", "20px");
+    }, 100); // Slight delay for smooth transition
+
+    // Slide out after 3 seconds
+    setTimeout(function () {
+        alertBox.css("right", "-400px");
+        setTimeout(function () {
+            alertBox.remove(); // Remove from DOM after slide out
+        }, 500); // Wait for transition to finish
+    }, 3000); // Stay for 3 seconds
+
+    setTimeout(function () {
+        jQuery(".icon-wrapper").removeClass('anim');
+    }, 2000);
+}
+
 
 jQuery(document).ready(function ($) {
 
@@ -1410,7 +1404,7 @@ jQuery(document).ready(function ($) {
             action: "ai_assistant_create_template_part",
             template_content: templateContent,
             filename: filename
-        }, _this, function(response) {
+        }, _this, function (response) {
             if (response.success) {
                 // ✅ Replace selected content with `get_template_part`
                 const templatePartCode = `<?php get_template_part('partials/partial','${filename}'); ?>`;
@@ -1424,6 +1418,157 @@ jQuery(document).ready(function ($) {
             }
         });
     }
+
+
+    $(document).on("click", "#add__field_to_textarea", function () {
+        let textareaContent = $("#field__customizer").val().trim();
+        if (!textareaContent) {
+            showAlert("⚠ No content available!", "danger");
+            return;
+        }
+
+        // ✅ Get the Text Domain
+        let textDomainInput = $("input[name='text_domain']");
+        let textDomain = textDomainInput.val().trim();
+
+        // ✅ If text-domain is empty, ask for it
+        if (!textDomain) {
+            textDomain = prompt("Enter your text domain (e.g., mytheme):", "mytheme");
+            if (!textDomain) {
+                showAlert("⚠ Text domain is required!", "danger");
+                return;
+            }
+            textDomainInput.val(textDomain); // Save in input field
+        }
+
+        // ✅ Extract Section Name
+        let sectionMatch = textareaContent.match(/\[section\s+name="([^"]+)"\]/);
+        if (!sectionMatch) {
+            showAlert("⚠ No valid section found!", "danger");
+            return;
+        }
+        let sectionName = sectionMatch[1].trim();
+        let sectionSlug = sectionName.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+
+        // ✅ Extract Fields
+        let fieldMatches = [...textareaContent.matchAll(/\[([a-zA-Z0-9_-]+)\s+name="([^"]+)"(?:\s+option="([^"]*)")?\]/g)];
+        if (fieldMatches.length === 0) {
+            showAlert("⚠ No fields found inside the section!", "danger");
+            return;
+        }
+
+        // ✅ Start generating WordPress Customizer code
+        let customizerCode = `
+$wp_customize->add_section('${sectionSlug}', array(
+    'title' => __('${sectionName}', '${textDomain}'),
+    'priority' => 30,
+));\n`;
+
+        fieldMatches.forEach(match => {
+            let fieldType = match[1]; // text, textarea, checkbox, etc.
+            let fieldName = match[2];
+            let fieldSlug = fieldName.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+            let options = match[3] ? match[3].split("|").map(opt => opt.trim()) : [];
+
+            switch (fieldType) {
+                case "text":
+                case "url":
+                case "textarea":
+                    customizerCode += `
+$wp_customize->add_setting('${fieldSlug}', array(
+    'default' => '',
+    'sanitize_callback' => 'sanitize_text_field',
+));
+$wp_customize->add_control('${fieldSlug}', array(
+    'label' => __('${fieldName}', '${textDomain}'),
+    'section' => '${sectionSlug}',
+    'type' => '${fieldType}',
+));\n`;
+                    break;
+
+                case "image":
+                    customizerCode += `
+$wp_customize->add_setting('${fieldSlug}', array(
+    'default' => '',
+    'sanitize_callback' => 'esc_url_raw',
+));
+$wp_customize->add_control(new WP_Customize_Image_Control($wp_customize, '${fieldSlug}', array(
+    'label' => __('${fieldName}', '${textDomain}'),
+    'section' => '${sectionSlug}',
+    'settings' => '${fieldSlug}',
+)));\n`;
+                    break;
+
+                case "color":
+                    customizerCode += `
+$wp_customize->add_setting('${fieldSlug}', array(
+    'default' => '',
+    'sanitize_callback' => 'sanitize_hex_color',
+));
+$wp_customize->add_control(new WP_Customize_Color_Control($wp_customize, '${fieldSlug}', array(
+    'label' => __('${fieldName}', '${textDomain}'),
+    'section' => '${sectionSlug}',
+    'settings' => '${fieldSlug}',
+)));\n`;
+                    break;
+
+                case "checkbox":
+                    customizerCode += `
+$wp_customize->add_setting('${fieldSlug}', array(
+    'default' => '0',
+    'sanitize_callback' => 'absint',
+));
+$wp_customize->add_control('${fieldSlug}', array(
+    'label' => __('${fieldName}', '${textDomain}'),
+    'section' => '${sectionSlug}',
+    'type' => 'checkbox',
+));\n`;
+                    break;
+
+                case "radio":
+                    if (options.length > 0) {
+                        let choices = options.map(opt => `'${opt}' => '${opt}'`).join(", ");
+                        customizerCode += `
+$wp_customize->add_setting('${fieldSlug}', array(
+    'default' => '${options[0]}',
+    'sanitize_callback' => 'sanitize_text_field',
+));
+$wp_customize->add_control('${fieldSlug}', array(
+    'label' => __('${fieldName}', '${textDomain}'),
+    'section' => '${sectionSlug}',
+    'type' => 'radio',
+    'choices' => array(${choices}),
+));\n`;
+                    }
+                    break;
+            }
+        });
+
+        // ✅ Send the PHP code to WordPress (AJAX)
+        $.ajax({
+            url: ajax_object.ajax_url,
+            type: "POST",
+            data: {
+                action: "save_customizer_code",
+                customizer_code: customizerCode
+            },
+            success: function (response) {
+                showAlert("✅ Customizer code added to functions.php!", "success");
+                $("#field__customizer").val("");
+            },
+            error: function () {
+                showAlert("❌ Error saving to functions.php!", "danger");
+                $("#field__customizer").val("");
+            }
+        });
+    });
+
+
+
+         
+
+
+
 
 
 });

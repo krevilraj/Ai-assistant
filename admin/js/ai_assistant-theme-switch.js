@@ -31,7 +31,7 @@ jQuery(document).ready(function ($) {
             tabSize: 4,
             theme: savedTheme, // ✅ Apply saved theme
             matchBrackets: true,
-            matchTags: { bothTags: true },
+            matchTags: {bothTags: true},
             autoCloseBrackets: true,
             autoCloseTags: mode === "htmlmixed", // ✅ Enable only for HTML
             styleActiveLine: true,
@@ -39,7 +39,9 @@ jQuery(document).ready(function ($) {
                 "Ctrl-Space": "autocomplete",
                 "Ctrl-/": "toggleComment",
                 "Shift-Ctrl-/": "toggleBlockComment",
-                "Tab": function (cm) { expandAbbreviation(cm); }
+                "Tab": function (cm) {
+                    expandAbbreviation(cm);
+                }
             }
 
 
@@ -57,50 +59,29 @@ jQuery(document).ready(function ($) {
          * - `div>button` → `<div><button></button></div>`
          * - `ul>li*3` → `<ul><li></li><li></li><li></li></ul>`
          */
-        function expandAbbreviation(cm) {
-            console.log('Expanding Emmet Abbreviation...');
-            var cursor = cm.getCursor();
-            var line = cm.getLine(cursor.line);
-            var beforeCursor = line.slice(0, cursor.ch);
 
-            // ✅ Allow only valid Emmet syntax (tag, tag.class, tag#id, >, *)
-            if (!beforeCursor.match(/^[\w.#>\*\d+-]+$/)) {
-                console.log('❌ No valid Emmet match found, default Tab behavior.');
-                cm.execCommand("defaultTab");
-                return;
-            }
-
-            // ✅ Generate the expanded HTML
-            var expanded = parseEmmet(beforeCursor);
-
-            // ✅ Find the start position of the match (replace only the abbreviation)
-            var startPos = { line: cursor.line, ch: beforeCursor.lastIndexOf(beforeCursor) };
-            var endPos = { line: cursor.line, ch: cursor.ch };
-
-            cm.replaceRange(expanded, startPos, endPos);
-            cm.setCursor(cursor.line, startPos.ch + expanded.length - (`</div>`.length));
-
-            console.log(`✅ Expansion Success: ${expanded}`);
-        }
 
         /**
          * ✅ Expands Emmet-style Abbreviations in CodeMirror
+         * Now Works Even If There's Other Text or HTML on the Line!
          */
         function expandAbbreviation(cm) {
             console.log('Expanding Emmet Abbreviation...');
             var cursor = cm.getCursor();
             var line = cm.getLine(cursor.line);
-            var beforeCursor = line.slice(0, cursor.ch).trim(); // Remove extra spaces
 
-            // ✅ Ensure valid Emmet-like syntax (no random words)
-            if (!beforeCursor.match(/^[\w.#>*\d-]+$/)) {
+            // ✅ Find the LAST Emmet-like abbreviation in the line
+            var match = line.match(/([\w.#>*\d-]+)$/);
+            if (!match) {
                 console.log('❌ No valid Emmet match found, default Tab behavior.');
                 cm.execCommand("defaultTab");
                 return;
             }
 
+            var abbreviation = match[1];
+
             // ✅ Generate the expanded HTML
-            var expanded = parseEmmet(beforeCursor);
+            var expanded = parseEmmet(abbreviation);
 
             if (!expanded) {
                 console.log('❌ Not a valid HTML tag, skipping expansion.');
@@ -108,8 +89,8 @@ jQuery(document).ready(function ($) {
                 return;
             }
 
-            // ✅ Find the start position of the match (replace only the abbreviation)
-            var startPos = { line: cursor.line, ch: beforeCursor.lastIndexOf(beforeCursor) };
+            // ✅ Replace only the detected abbreviation (not the whole line!)
+            var startPos = { line: cursor.line, ch: match.index };
             var endPos = { line: cursor.line, ch: cursor.ch };
 
             cm.replaceRange(expanded, startPos, endPos);
@@ -177,7 +158,7 @@ jQuery(document).ready(function ($) {
                 }
             });
 
-            // ✅ Close open tags properly & prevent `-1` indent errors
+            // ✅ Close open tags properly
             while (openTags.length > 0) {
                 let closingTag = openTags.pop();
                 indentLevel = Math.max(0, indentLevel - 1); // 🔥 FIX: Prevent indent going negative
@@ -186,14 +167,6 @@ jQuery(document).ready(function ($) {
 
             return html.trim(); // Return valid HTML or empty if invalid
         }
-
-
-
-
-
-
-
-
 
 
 
@@ -238,7 +211,7 @@ jQuery(document).ready(function ($) {
             if (!window.selectedText) {
                 let cursor = editor.getCursor();
                 editor.replaceRange(newText, cursor);
-                editor.setCursor({ line: cursor.line, ch: cursor.ch + newText.length });
+                editor.setCursor({line: cursor.line, ch: cursor.ch + newText.length});
                 showAlert(message || "Code inserted at cursor position!", "success");
             } else {
                 editor.replaceSelection(newText);
@@ -265,7 +238,7 @@ jQuery(document).ready(function ($) {
             var lineNumber = parseInt($("#line-number-input").val(), 10);
 
             if (!isNaN(lineNumber) && lineNumber > 0) {
-                editor.setCursor({ line: lineNumber - 1, ch: 0 }); // ✅ Move cursor (0-based index)
+                editor.setCursor({line: lineNumber - 1, ch: 0}); // ✅ Move cursor (0-based index)
                 editor.focus(); // ✅ Focus the editor
             } else {
                 alert("❌ Enter a valid line number!");
@@ -299,4 +272,23 @@ jQuery(document).ready(function ($) {
         // ✅ Store editor globally
         window.aiAssistantEditor = editor;
     };
+
+    function beautifyCodeMirror(editor) {
+        let mode = editor.getOption("mode");
+        let code = editor.getValue();
+        let formattedCode = code; // Default is original code
+
+        if (mode === "htmlmixed" || mode === "xml") {
+            formattedCode = html_beautify(code, {indent_size: 4});
+        } else if (mode === "javascript") {
+            formattedCode = js_beautify(code, {indent_size: 4});
+        } else if (mode === "css") {
+            formattedCode = css_beautify(code, {indent_size: 4});
+        } else if (mode === "application/x-httpd-php") {
+            formattedCode = php_beautify(code); // Using `php-beautifier`
+        }
+
+        editor.setValue(formattedCode);
+    }
 });
+

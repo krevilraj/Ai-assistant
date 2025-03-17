@@ -475,3 +475,106 @@
     justify-content: space-between;
     align-items: center;
 }
+.field__customizer_wrapper{
+    display:flex;
+    flex-direction:column;
+}
+.field__customizer_wrapper div{
+    text-align:right;
+}
+
+/******************************* customizer tab *****************************/
+.customizer-tabs ul {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin-bottom: 10px;
+    border-bottom: 2px solid #ccc;
+}
+
+.customizer-tabs li {
+    padding: 10px 15px;
+    cursor: pointer;
+    background: #f1f1f1;
+    border: 1px solid #ccc;
+    margin-right: 5px;
+}
+
+.customizer-tabs li.active {
+    background: #0073aa;
+    color: white;
+}
+
+[data-tab-content] {
+    display: none;
+}
+
+[data-tab-content].active {
+    display: block;
+}
+
+/* ✅ Accordion Container */
+.customizer-accordion {
+    width: 100%;
+    border-radius: 5px;
+    background: #fff;
+    overflow: hidden;
+}
+
+
+
+.accordion-item:last-child {
+    border-bottom: none;
+}
+
+/* ✅ Accordion Header */
+.accordion-toggle {
+    background: #f9f9f9;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    border: none;
+    width: 100%;
+    text-align: left;
+    transition: background 0.3s ease;
+}
+
+.accordion-toggle:hover {
+    background: #eee;
+}
+
+/* ✅ Accordion Body (Hidden by Default) */
+.accordion-body {
+    display: none;
+    padding: 10px;
+    background: #fff;
+}
+
+/* ✅ Active State (When Opened) */
+.accordion-item.active .accordion-body {
+    display: block;
+}
+
+.accordion-item.active .accordion-toggle {
+    background: #0073aa;
+    color: white;
+}
+
+/* ✅ Buttons inside Accordion */
+.accordion-body button.copy-btn {
+    display: inline-block;
+    padding: 8px;
+    margin: 5px 0;
+    border: 1px solid #ccc;
+    background: #f1f1f1;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.3s ease;
+}
+
+.accordion-body button.copy-btn:hover {
+    background: #ddd;
+}
+
+

@@ -88,9 +88,67 @@ class AI_Assistant
         add_action('admin_body_class', [$this, 'add_dark_theme_body_class']);
         add_action('wp_ajax_ai_assistant_create_template_part', [$this, 'ai_assistant_create_template_part']);
         add_action('wp_ajax_upload_theme_image', [$this, 'upload_theme_image']);
+        add_action('wp_ajax_save_customizer_code', [$this, 'save_customizer_code']);
+
     }
 
-    function upload_theme_image() {
+    function save_customizer_code()
+    {
+        if (!isset($_POST['customizer_code'])) {
+            wp_send_json_error("Missing data!");
+        }
+
+        $code = stripslashes($_POST['customizer_code']); // ✅ Remove extra escaping
+
+        // ✅ Extract the section name from the code
+        preg_match("/add_section\('([^']+)'/", $code, $matches);
+        if (!isset($matches[1])) {
+            wp_send_json_error("Invalid section name.");
+        }
+
+        $sectionSlug = sanitize_title($matches[1]); // ✅ Convert to a safe filename
+        $themeDir = get_template_directory();
+        $customizerDir = $themeDir . "/customizer/";
+
+        // ✅ Ensure the customizer directory exists
+        if (!file_exists($customizerDir)) {
+            mkdir($customizerDir, 0755, true);
+        }
+
+        // ✅ Create a unique function name
+        $functionName = "theme_customizer_" . $sectionSlug . "_settings";
+
+        // ✅ Define the full file path
+        $filePath = $customizerDir . "{$sectionSlug}.php";
+
+        // ✅ Write the Customizer function into the separate file
+        $customizerFunction = "<?php
+function {$functionName}(\$wp_customize) {
+{$code}
+}
+add_action('customize_register', '{$functionName}');
+";
+
+        file_put_contents($filePath, $customizerFunction);
+
+        // ✅ Ensure the file is included in `functions.php`
+        $functionsPath = $themeDir . "/functions.php";
+        $includeCode = "include_once get_template_directory() . '/customizer/{$sectionSlug}.php';\n";
+
+        // ✅ Insert the include statement at the top of functions.php
+        $functionsContent = file_get_contents($functionsPath);
+        if (strpos($functionsContent, $includeCode) === false) {
+            $functionsContent = preg_replace("/<\?php\s*/", "<?php\n" . $includeCode, $functionsContent, 1);
+            file_put_contents($functionsPath, $functionsContent);
+        }
+
+        wp_send_json_success("Customizer settings saved in `/customizer/{$sectionSlug}.php` and included in `functions.php`.");
+    }
+
+
+
+    function upload_theme_image()
+    {
         if (!isset($_POST['image_path'])) {
             wp_send_json_error("No image path provided.");
             return;
@@ -111,7 +169,7 @@ class AI_Assistant
 
         // ✅ Prepare image for upload
         $file_array = array(
-            'name'     => basename($full_path),
+            'name' => basename($full_path),
             'tmp_name' => $full_path
         );
 
@@ -131,15 +189,13 @@ class AI_Assistant
 
         // ✅ Return success with the new image ID and URL
         wp_send_json_success(array(
-            'image_id'  => $attachment_id,
+            'image_id' => $attachment_id,
             'image_url' => $image_url
         ));
     }
 
-
-
-
-    function add_dark_theme_body_class($classes) {
+    function add_dark_theme_body_class($classes)
+    {
         // ✅ Check if we're on the "ai_assistant-theme-editor" admin page
         if (isset($_GET['page']) && $_GET['page'] === 'ai_assistant-theme-editor') {
             $selected_theme = get_option('ai_assistant_codemirror_theme', 'default');
@@ -155,7 +211,8 @@ class AI_Assistant
 
 
     // ✅ Save CodeMirror theme selection in wp_options
-    function save_codemirror_theme() {
+    function save_codemirror_theme()
+    {
         if (isset($_POST['theme'])) {
             update_option('ai_assistant_codemirror_theme', sanitize_text_field($_POST['theme']));
             wp_send_json_success(['message' => 'Theme updated successfully']);
@@ -166,7 +223,8 @@ class AI_Assistant
 
 
     // Function to get custom field groups
-    function get_custom_field_groups() {
+    function get_custom_field_groups()
+    {
         $field_groups = acf_get_field_groups(); // Get ACF field groups
         $data = array();
 
@@ -182,7 +240,8 @@ class AI_Assistant
     }
 
 // Function to get fields for a specific group
-    function get_custom_fields() {
+    function get_custom_fields()
+    {
         $group_key = $_POST['group_key'];
         $fields = acf_get_fields($group_key); // Get fields for the group
         $data = array();
@@ -207,15 +266,18 @@ class AI_Assistant
 
     }
 
-    public function run(){
+    public function run()
+    {
         $this->loader->run();
     }
 
-    public function get_plugin_name(){
+    public function get_plugin_name()
+    {
         return $this->plugin_name;
     }
 
-    public function get_version(){
+    public function get_version()
+    {
         return $this->version;
     }
 
@@ -235,7 +297,8 @@ class AI_Assistant
         $this->loader->add_action('plugins_loaded', $plugin_i18n, 'load_plugin_textdomain');
     }
 
-    public function save_acf_json() {
+    public function save_acf_json()
+    {
         if (!isset($_POST['json_data']) || !isset($_POST['location_data'])) {
             wp_send_json_error("Invalid request.");
             return;
@@ -276,7 +339,8 @@ class AI_Assistant
     }
 
 
-    public function ai_assistant_save_file() {
+    public function ai_assistant_save_file()
+    {
         // ✅ Check user capability
         if (!current_user_can('edit_theme_options')) {
             wp_send_json_error("Unauthorized access.");
@@ -306,7 +370,8 @@ class AI_Assistant
         wp_send_json_success("File updated successfully!");
     }
 
-    function get_acf_location_data(){
+    function get_acf_location_data()
+    {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized");
         }
@@ -417,7 +482,8 @@ class AI_Assistant
         wp_send_json_success($fields_data);
     }
 
-    public function set_homepage(){
+    public function set_homepage()
+    {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized access.");
             return;
@@ -441,7 +507,8 @@ class AI_Assistant
         wp_send_json_success("Homepage set successfully.");
     }
 
-    public function reset_permalink_structure() {
+    public function reset_permalink_structure()
+    {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized access.");
             return;
@@ -560,7 +627,8 @@ Tags: e-commerce, custom-menu, custom-logo, featured-images, footer-widgets, the
     }
 
     // ✅ Fetch theme details for display
-    public function ai_assistant_get_theme_details() {
+    public function ai_assistant_get_theme_details()
+    {
         wp_send_json_success([
             'theme_name' => get_option('ai_assistant_theme_name', ''),
             'theme_uri' => get_option('ai_assistant_theme_uri', ''),
@@ -570,7 +638,8 @@ Tags: e-commerce, custom-menu, custom-logo, featured-images, footer-widgets, the
         ]);
     }
 
-    public function ai_assistant_create_page_and_template() {
+    public function ai_assistant_create_page_and_template()
+    {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized access.");
         }
@@ -578,7 +647,7 @@ Tags: e-commerce, custom-menu, custom-logo, featured-images, footer-widgets, the
         $page_name = sanitize_text_field($_POST['page_name']);
         $create_template = isset($_POST['create_template']) ? boolval($_POST['create_template']) : false;
         $theme_dir = get_stylesheet_directory();
-        $template_slug = 'template-'.sanitize_title($page_name) . '.php';
+        $template_slug = 'template-' . sanitize_title($page_name) . '.php';
 
         // ✅ Create template file if checkbox is checked
         if ($create_template) {
@@ -601,11 +670,11 @@ get_header(); ?>
 
         // ✅ Create WordPress page
         $page_id = wp_insert_post([
-            'post_title'   => $page_name,
+            'post_title' => $page_name,
             'post_content' => '',
-            'post_status'  => 'publish',
-            'post_type'    => 'page',
-            'page_template'=> $create_template ? $template_slug : ''
+            'post_status' => 'publish',
+            'post_type' => 'page',
+            'page_template' => $create_template ? $template_slug : ''
         ]);
 
         if (is_wp_error($page_id) || !$page_id) {
@@ -619,7 +688,8 @@ get_header(); ?>
     }
 
     //create menu and respond menu id
-    public function ai_assistant_create_menu() {
+    public function ai_assistant_create_menu()
+    {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized access.");
         }
@@ -639,8 +709,10 @@ get_header(); ?>
             wp_send_json_error("Menu already exists.");
         }
     }
+
     // correct header
-    public function ai_assistant_correct_header() {
+    public function ai_assistant_correct_header()
+    {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized access.");
         }
@@ -794,8 +866,10 @@ get_header(); ?>
         }
 
     }
+
     // correct footer
-    public function ai_assistant_correct_footer() {
+    public function ai_assistant_correct_footer()
+    {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized access.");
         }
@@ -899,9 +973,11 @@ get_header(); ?>
 
         wp_send_json_success("Footer processed, scripts enqueued, empty lines removed, and content prepended successfully.");
     }
+
     //correct menu
 
-    public function ai_assistant_detect_and_convert_menu() {
+    public function ai_assistant_detect_and_convert_menu()
+    {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized access.");
         }
@@ -1010,11 +1086,9 @@ class WP_Bootstrap_Navwalker extends Walker_Nav_Menu {
 
             wp_send_json_success([
                 'menu_code' => $menu_code,
-                'message'   => "✅ Bootstrap menu converted successfully!"
+                'message' => "✅ Bootstrap menu converted successfully!"
             ]);
-        }
-
-        // ✅ Handle Custom-Styled Menu
+        } // ✅ Handle Custom-Styled Menu
         elseif (preg_match('/class=["\'].*?(menu-item|menu-link|dropdown-list).*?["\']/', $menu_html)) {
             $menu_code = "<?php wp_nav_menu([
             'menu' => '{$menu_name}',
@@ -1024,11 +1098,9 @@ class WP_Bootstrap_Navwalker extends Walker_Nav_Menu {
 
             wp_send_json_success([
                 'menu_code' => $menu_code,
-                'message'   => "✅ Custom menu converted successfully!"
+                'message' => "✅ Custom menu converted successfully!"
             ]);
-        }
-
-        // ✅ Handle Default Basic Menu
+        } // ✅ Handle Default Basic Menu
         else {
             $menu_code = "<?php wp_nav_menu([
             'menu' => '{$menu_name}',
@@ -1038,23 +1110,23 @@ class WP_Bootstrap_Navwalker extends Walker_Nav_Menu {
 
             wp_send_json_success([
                 'menu_code' => $menu_code,
-                'message'   => "✅ Basic menu converted successfully!"
+                'message' => "✅ Basic menu converted successfully!"
             ]);
         }
     }
 
 
-
-
-
     // ✅ Fetch all theme files
-    public function ai_assistant_get_theme_files() {
+    public function ai_assistant_get_theme_files()
+    {
         $theme_dir = get_stylesheet_directory();
         $files = array_diff(scandir($theme_dir), array('.', '..'));
         wp_send_json_success(['files' => array_values($files)]);
     }
+
     // Delete files and folder
-    function ai_assistant_delete_file() {
+    function ai_assistant_delete_file()
+    {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("❌ Unauthorized access.");
         }
@@ -1075,8 +1147,10 @@ class WP_Bootstrap_Navwalker extends Walker_Nav_Menu {
         }
         wp_send_json_success("✅ Successfully deleted: " . basename($file_path));
     }
+
     // Recursive folder deletion
-    function delete_folder($folder) {
+    function delete_folder($folder)
+    {
         foreach (glob($folder . '/*') as $file) {
             if (is_dir($file)) {
                 delete_folder($file);
@@ -1086,8 +1160,10 @@ class WP_Bootstrap_Navwalker extends Walker_Nav_Menu {
         }
         rmdir($folder);
     }
+
     // ✅ Load file content for editor
-    public function ai_assistant_load_theme_file() {
+    public function ai_assistant_load_theme_file()
+    {
         if (!isset($_POST['filename'])) wp_send_json_error('Filename missing.');
 
         $theme_dir = get_stylesheet_directory();
@@ -1097,8 +1173,10 @@ class WP_Bootstrap_Navwalker extends Walker_Nav_Menu {
         $content = file_get_contents($file_path);
         wp_send_json_success(['content' => $content]);
     }
+
     // create cpt
-    function ai_assistant_create_cpt_handler() {
+    function ai_assistant_create_cpt_handler()
+    {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized access.");
         }
@@ -1206,7 +1284,8 @@ PHP;
     }
 
     // Create user type
-    function ai_assistant_create_user_type() {
+    function ai_assistant_create_user_type()
+    {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("❌ Unauthorized access.");
         }
@@ -1236,7 +1315,8 @@ PHP;
         }
     }
 
-    function ai_assistant_delete_user_role() {
+    function ai_assistant_delete_user_role()
+    {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("❌ Unauthorized access.");
         }
@@ -1261,7 +1341,8 @@ PHP;
     }
 
 
-    function ai_assistant_create_template_part() {
+    function ai_assistant_create_template_part()
+    {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("Unauthorized access.");
         }
@@ -1290,8 +1371,6 @@ PHP;
 
         wp_send_json_success("Template file created successfully: partial-{$filename}.php");
     }
-
-
 
 
 }

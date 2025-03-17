@@ -126,7 +126,6 @@ class AI_Assistant_Admin
         wp_add_inline_script('code-editor', 'jQuery(document).ready(function($) { aiAssistantInitEditor(); });');
         if (isset($_GET['page']) && $_GET['page'] === 'ai_assistant-theme-editor') {
 
-
         }
 
 
