@@ -83,6 +83,7 @@ class AI_Assistant_Admin
         if (isset($_GET['page']) && $_GET['page'] === 'ai_assistant-theme-editor') {
             wp_enqueue_style($this->plugin_name . 'dark-theme', plugin_dir_url(__FILE__) . 'css/darktheme.css', array(), $this->version, 'all');
             wp_enqueue_style($this->plugin_name . 'coder_snippet', plugin_dir_url(__FILE__) . 'css/ai_assistant-snippet.css', array(), $this->version, 'all');
+            wp_enqueue_style('codemirror-foldgutter-css', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.css');
         }
 
     }
@@ -125,7 +126,10 @@ class AI_Assistant_Admin
         // Localize script for JS usage
         wp_add_inline_script('code-editor', 'jQuery(document).ready(function($) { aiAssistantInitEditor(); });');
         if (isset($_GET['page']) && $_GET['page'] === 'ai_assistant-theme-editor') {
-
+            wp_enqueue_script('codemirror-foldcode', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldcode.min.js', ['wp-codemirror'], null, true);
+            wp_enqueue_script('codemirror-foldgutter', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.js', ['wp-codemirror'], null, true);
+            wp_enqueue_script('codemirror-brace-fold', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/brace-fold.min.js', ['wp-codemirror'], null, true);
+            wp_enqueue_script('codemirror-comment-fold', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/comment-fold.min.js', ['wp-codemirror'], null, true);
         }
 
 

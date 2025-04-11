@@ -35,138 +35,18 @@ jQuery(document).ready(function ($) {
             autoCloseBrackets: true,
             autoCloseTags: mode === "htmlmixed", // ✅ Enable only for HTML
             styleActiveLine: true,
+            foldGutter: true, // ✅ Enable fold gutter
+            gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"], // ✅ Show collapse arrows
             extraKeys: {
                 "Ctrl-Space": "autocomplete",
                 "Ctrl-/": "toggleComment",
                 "Shift-Ctrl-/": "toggleBlockComment",
-                "Tab": function (cm) {
-                    expandAbbreviation(cm);
-                }
+                "Ctrl-Q": function(cm) { cm.foldCode(cm.getCursor()); }
             }
 
 
         });
 
-        /**
-         * ✅ Expands Emmet-style Abbreviations in CodeMirror
-         * Supports:
-         * - `div` → `<div></div>`
-         * - `div.class` → `<div class="class"></div>`
-         * - `span#id` → `<span id="id"></span>`
-         * - `a` → `<a href=""></a>`
-         * - `a.class` → `<a href="" class="class"></a>`
-         * - `a#id` → `<a href="" id="id"></a>`
-         * - `div>button` → `<div><button></button></div>`
-         * - `ul>li*3` → `<ul><li></li><li></li><li></li></ul>`
-         */
-
-
-        /**
-         * ✅ Expands Emmet-style Abbreviations in CodeMirror
-         * Now Works Even If There's Other Text or HTML on the Line!
-         */
-        function expandAbbreviation(cm) {
-            console.log('Expanding Emmet Abbreviation...');
-            var cursor = cm.getCursor();
-            var line = cm.getLine(cursor.line);
-
-            // ✅ Find the LAST Emmet-like abbreviation in the line
-            var match = line.match(/([\w.#>*\d-]+)$/);
-            if (!match) {
-                console.log('❌ No valid Emmet match found, default Tab behavior.');
-                cm.execCommand("defaultTab");
-                return;
-            }
-
-            var abbreviation = match[1];
-
-            // ✅ Generate the expanded HTML
-            var expanded = parseEmmet(abbreviation);
-
-            if (!expanded) {
-                console.log('❌ Not a valid HTML tag, skipping expansion.');
-                cm.execCommand("defaultTab");
-                return;
-            }
-
-            // ✅ Replace only the detected abbreviation (not the whole line!)
-            var startPos = { line: cursor.line, ch: match.index };
-            var endPos = { line: cursor.line, ch: cursor.ch };
-
-            cm.replaceRange(expanded, startPos, endPos);
-            cm.setCursor(cursor.line, startPos.ch + expanded.length - (`</div>`.length));
-
-            console.log(`✅ Expansion Success: ${expanded}`);
-        }
-
-        /**
-         * ✅ Parses Emmet-style syntax and generates corresponding HTML
-         */
-        function parseEmmet(abbreviation) {
-            const validTags = new Set([
-                "a", "abbr", "address", "article", "aside", "audio", "b", "blockquote", "button", "canvas",
-                "caption", "cite", "code", "col", "colgroup", "data", "datalist", "dd", "del", "details",
-                "dfn", "dialog", "div", "dl", "dt", "em", "fieldset", "figcaption", "figure", "footer",
-                "form", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hr", "i", "iframe", "img", "input",
-                "ins", "kbd", "label", "legend", "li", "main", "mark", "menu", "meter", "nav", "object",
-                "ol", "optgroup", "option", "output", "p", "picture", "pre", "progress", "q", "s",
-                "section", "select", "small", "source", "span", "strong", "sub", "summary", "sup", "svg",
-                "table", "tbody", "td", "textarea", "tfoot", "th", "thead", "time", "tr", "track", "u",
-                "ul", "var", "video", "wbr"
-            ]);
-
-            const parts = abbreviation.split(">");
-            let html = "";
-            let indentLevel = 0;
-            let indent = "  ";
-            let openTags = []; // Stack to track open tags
-
-            function createElement(tag) {
-                let multiple = 1;
-                let className = "";
-                let id = "";
-                let match = tag.match(/^([\w-]*)(?:#([\w-]+))?(?:\.([\w-.]+))?\*?(\d+)?$/);
-
-                if (!match) return null;
-
-                let tagName = match[1] || "div"; // Extract tag name (default to div)
-                if (!validTags.has(tagName)) return null; // ✅ Ensure it's a valid HTML tag
-
-                id = match[2] ? ` id="${match[2]}"` : "";
-                className = match[3] ? ` class="${match[3].replace(/\./g, ' ')}"` : "";
-                multiple = match[4] ? parseInt(match[4], 10) : 1;
-
-                let elements = "";
-                for (let i = 0; i < multiple; i++) {
-                    if (tagName === "a") {
-                        elements += `${indent.repeat(indentLevel)}<a href=""${id}${className}></a>\n`; // ✅ Always include `href=""`
-                    } else {
-                        elements += `${indent.repeat(indentLevel)}<${tagName}${id}${className}>\n`;
-                        openTags.push(tagName); // Track open tag for nesting
-                    }
-                }
-                return elements;
-            }
-
-            parts.forEach((part, index) => {
-                let elementHTML = createElement(part);
-                if (elementHTML) {
-                    html += elementHTML;
-                    if (index < parts.length - 1) {
-                        indentLevel++; // Increase indent level for nesting
-                    }
-                }
-            });
-
-            // ✅ Close open tags properly
-            while (openTags.length > 0) {
-                let closingTag = openTags.pop();
-                indentLevel = Math.max(0, indentLevel - 1); // 🔥 FIX: Prevent indent going negative
-                html += `${indent.repeat(indentLevel)}</${closingTag}>\n`;
-            }
-
-            return html.trim(); // Return valid HTML or empty if invalid
-        }
 
 
 

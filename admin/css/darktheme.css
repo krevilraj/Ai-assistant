@@ -1,6 +1,6 @@
 .cm-s-dracula .CodeMirror-gutters, .cm-s-dracula.CodeMirror {
     background-color: #282a36 !important;
-    color: #f8f8f2 !important;
+    color: #c7c7c6 !important;
     border: none
 }
 
@@ -33,15 +33,15 @@
 }
 
 .cm-s-dracula span.cm-string, .cm-s-dracula span.cm-string-2 {
-    color: #f1fa8c
+    color: #bfc966
 }
 
 .cm-s-dracula span.cm-number {
-    color: #bd93f9
+    color: #72bab7
 }
 
 .cm-s-dracula span.cm-variable {
-    color: #50fa7b
+    color: #c7c7c6
 }
 .ai-dark-theme #wpcontent{
     background-color:#282a36 !important;
@@ -52,32 +52,33 @@
 }
 
 .cm-s-dracula span.cm-def {
-    color: #50fa7b
+    color: #fade50
 }
 
 .cm-s-dracula span.cm-operator {
-    color: #ff79c6
+    color: #c7c7c6
 }
 
 .cm-s-dracula span.cm-keyword {
-    color: #ff79c6
+    color: #ff8b28
 }
 
 .cm-s-dracula span.cm-atom {
-    color: #bd93f9
+    color: #ff8b28
 }
 
 .cm-s-dracula span.cm-meta {
-    color: #f8f8f2
+    color: #ff8b28
 }
 
 .cm-s-dracula span.cm-tag {
-    color: #ff79c6
+    color: #f4d188 !important; /* Yellow */
 }
 
 .cm-s-dracula span.cm-attribute {
-    color: #50fa7b
+    color: #c7c7c6 !important; /* Green */
 }
+
 
 .cm-s-dracula span.cm-qualifier {
     color: #50fa7b
@@ -88,7 +89,7 @@
 }
 
 .cm-s-dracula span.cm-builtin {
-    color: #50fa7b
+    color: #c7c7c6
 }
 
 .cm-s-dracula span.cm-type, .cm-s-dracula span.cm-variable-3 {
@@ -102,4 +103,9 @@
 .cm-s-dracula .CodeMirror-matchingbracket {
     text-decoration: underline;
     color: #fff !important
+}
+
+/******************** Editor other section ******************************/
+.ai-dark-theme .editor__header h2{
+    color: #c7c7c6
 }

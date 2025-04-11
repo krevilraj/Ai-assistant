@@ -26,9 +26,9 @@ jQuery(document).ready(function ($) {
     }
 
     // ✅ Load all snippet files sequentially and merge handlers
-    loadScript('/wp-content/plugins/ai-assistant/admin/js/snippet/wordpress_php_snippet.js', function () {
-        loadScript('/wp-content/plugins/ai-assistant/admin/js/snippet/js_snippet.js', function () {
-            loadScript('/wp-content/plugins/ai-assistant/admin/js/snippet/css_snippet.js', function () {
+    loadScript('/wp-content/plugins/Ai-assistant/admin/js/snippet/wordpress_php_snippet.js', function () {
+        loadScript('/wp-content/plugins/Ai-assistant/admin/js/snippet/js_snippet.js', function () {
+            loadScript('/wp-content/plugins/Ai-assistant/admin/js/snippet/css_snippet.js', function () {
                 mergeHandlers();
             });
         });
