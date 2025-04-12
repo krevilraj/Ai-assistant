@@ -114,7 +114,10 @@ class AI_Assistant_Admin
         wp_enqueue_script($this->plugin_name . '-popup', plugin_dir_url(dirname(__FILE__)) . 'public/js/ai_assistant-popup.js', array('jquery'), $this->version, false);
         wp_enqueue_script($this->plugin_name.'-coder-snippet', plugin_dir_url(__FILE__) . 'js/ai_assistant_snippet.js', array('jquery'), $this->version, false);
         // Localize script to pass ajaxurl to JavaScript
+        $text_domain = wp_get_theme()->get('TextDomain');
+
         wp_localize_script($this->plugin_name, 'ajax_object',[
+            'text_domain' => $text_domain,
             'ajax_url' => admin_url('admin-ajax.php'),
             'saved_theme' => get_option('ai_assistant_codemirror_theme', 'default')]);
 

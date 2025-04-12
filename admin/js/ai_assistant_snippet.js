@@ -163,6 +163,8 @@ function insertSnippetV2(code, offsetOrCallback, callback) {
     }
 }
 
+
+
 function selectCursorPlaceholder(fallbackCursorPos) {
     let editor = window.aiAssistantEditor;
     if (!editor) {
@@ -187,6 +189,50 @@ function selectCursorPlaceholder(fallbackCursorPos) {
         console.log("🚨 @cursor@ not found! Cursor reset to previous position.");
     }
 }
+
+function insertSnippetV3(prefunction, code, offsetOrCallback, callback) {
+    if (typeof replaceSelectedTextInsideEditor === "function") {
+        let editor = window.aiAssistantEditor;
+        if (!editor) {
+            console.warn("🚨 CodeMirror instance not found!");
+            return;
+        }
+
+        let doc = editor.getDoc();
+        let selectedContent = window.selectedText ? window.selectedText.trim() : "";
+
+        // ✅ Replace @content@
+        code = code.replace("@content@", selectedContent || "");
+
+        // ✅ Replace @processedtext@ with return value of the prefunction (e.g. get_text_domain)
+        if (typeof window[prefunction] === "function") {
+            const textDomain = window[prefunction]();
+            code = code.replace("@processedtext@", textDomain || "");
+        } else {
+            console.warn(`🚨 Function '${prefunction}' is not defined!`);
+            code = code.replace("@processedtext@", "");
+        }
+
+        const fallbackCursorPos = doc.getCursor();
+
+        replaceSelectedTextInsideEditor(code, "");
+
+        setTimeout(() => {
+            selectCursorPlaceholder(fallbackCursorPos);
+        }, 50);
+    } else {
+        console.warn("🚨 replaceSelectedTextInsideEditor function is missing!");
+    }
+}
+
+
+function get_text_domain() {
+    return typeof ajax_object !== "undefined" && ajax_object.text_domain
+        ? ajax_object.text_domain
+        : "default_textdomain"; // fallback
+}
+
+
 
 
 

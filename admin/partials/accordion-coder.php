@@ -71,6 +71,14 @@
 
             </ul>
 
+            <h5>WPML Translation</h5>
+            <ul class="coding_action__list">
+                <li><button data-command="convert_to_translatable_text">Conver Translatable Text</button></li>
+
+            </ul>
+
+
+
         </div>
         <div class="coder_tab__content" id="Js">
             <ul class="coding_action__list">

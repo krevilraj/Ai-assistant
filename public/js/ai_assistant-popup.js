@@ -1027,29 +1027,60 @@ jQuery(document).ready(function ($) {
         });
     });
 
-    // reset the permalink select the post name default
-    $("#reset_permalink").on("click", function () {
-        if (confirm("Are you sure you want to reset permalinks to 'Post name'?")) {
+    const actionHandlers = {
+        toggle_wp_debug: {
+            confirm: "Are you sure you want to toggle WP_DEBUG?",
+            defaultError: "Failed to toggle WP_DEBUG."
+        },
+        reset_permalink: {
+            confirm: "Are you sure you want to reset permalinks to 'Post name'?",
+            defaultError: "Failed to reset permalinks."
+        },
+        custom_no_confirm: {
+            confirm: "", // no prompt needed
+            defaultError: "Custom action failed."
+        }
+    };
+
+    $(document).on("click", ".direct-action", function () {
+        const $el = $(this);
+        const action = $el.data("action");
+        const reload = $el.data("reload") === true || $el.data("reload") === "true";
+        const confirmRequired = $el.data("confirm") === true || $el.data("confirm") === "true";
+        const errorMessage = $el.data("error") || (actionHandlers[action]?.defaultError || "❌ AJAX error occurred.");
+        const confirmText = actionHandlers[action]?.confirm || `Run "${action}" action?`;
+
+        if (!action) return;
+
+        const runAjax = () => {
             $.ajax({
-                url: ajax_object.ajax_url, // Ensure ajax_object is localized in WordPress
+                url: ajax_object.ajax_url,
                 type: "POST",
-                data: {
-                    action: "reset_permalink"
-                },
+                data: { action: action },
                 success: function (response) {
                     if (response.success) {
-                        alert(response.data); // Success message
-                        location.reload();    // Reload to reflect new permalinks
+                        alert(response.data || "✅ Success.");
+                        if (reload) location.reload();
                     } else {
-                        showAlert("❌ Failed to reset permalinks.", "danger");
+                        showAlert(errorMessage, "danger");
                     }
                 },
                 error: function () {
                     showAlert("❌ AJAX error occurred.", "danger");
                 }
             });
+        };
+
+        if (confirmRequired) {
+            if (confirm(confirmText)) runAjax();
+        } else {
+            runAjax();
         }
     });
+
+
+
+
 
     $(".open__child").on("click", function () {
         var actionSetting = $(this).siblings(".action__setting");
@@ -1138,6 +1169,8 @@ jQuery(document).ready(function ($) {
         remove_user_type: handleDeleteUserType,
         change__admin_page_link: handleAdminUrl,
         create_template_part: handleTemplatePart,
+        change_admin_email: handleChangeAdminEmail,
+        translate_validation_text:handle_contact_form_translation_text,
         // ⚡️ Add new actions here without modifying main event handler
     };
 
@@ -1418,6 +1451,77 @@ jQuery(document).ready(function ($) {
             }
         });
     }
+
+    function handleChangeAdminEmail(_this, $) {
+        const parentLi = _this.closest('li');
+        const adminEmail = parentLi.find('input[name="admin_email"]').val().trim();
+
+        if (!adminEmail) {
+            return showAlert("❌ Please enter an email address.", "danger");
+        }
+
+        // Basic email validation
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(adminEmail)) {
+            return showAlert("❌ Please enter a valid email address.", "danger");
+        }
+
+        sendAjax({
+            action: "ai_assistant_change_admin_email",
+            email: adminEmail
+        }, _this);
+    }
+
+    function handle_contact_form_translation_text(_this, $) {
+        const parentLi = _this.closest('.custom-tab-content');
+        const formId = parentLi.find("select[name='cf7_form_selector']").val();
+        const inputText = parentLi.find("textarea[name='json__translated_text']").val().trim();
+
+        if (!formId) {
+            showAlert("❌ Please select a form.", "danger");
+            return;
+        }
+        if (!inputText) {
+            showAlert("❌ Please enter translated text.", "danger");
+            return;
+        }
+
+        // Try parsing as JSON
+        let parsedJson;
+        try {
+            parsedJson = JSON.parse(inputText);
+        } catch (e) {
+            // If not valid JSON, try parsing line-wise
+            const lines = inputText.split("\n").map(line => line.trim()).filter(Boolean);
+            const keys = [
+                "mail_sent_ok", "mail_sent_ng", "validation_error", "spam", "accept_terms",
+                "invalid_required", "invalid_too_long", "invalid_too_short", "upload_failed",
+                "upload_file_type_invalid", "upload_file_too_large", "upload_failed_php_error",
+                "invalid_date", "date_too_early", "date_too_late", "invalid_number",
+                "number_too_small", "number_too_large", "quiz_answer_not_correct",
+                "invalid_email", "invalid_url", "invalid_tel"
+            ];
+
+            if (lines.length !== keys.length) {
+                showAlert(`❌ Line count (${lines.length}) does not match required fields (${keys.length}).`, "danger");
+                return;
+            }
+
+            parsedJson = {};
+            keys.forEach((key, i) => {
+                parsedJson[key] = lines[i];
+            });
+        }
+
+        sendAjax({
+            action: "update_cf7_translated_messages",
+            form_id: formId,
+            messages_json: parsedJson
+        }, _this, function (response) {
+            showAlert("✅ Validation messages updated successfully!", "success");
+        });
+    }
+
 
 
     $(document).on("click", "#add__field_to_textarea", function () {

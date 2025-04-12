@@ -1,9 +1,25 @@
-<li><span class="open__child">Change page to homepage</span>
+<li><span class="direct-action" data-action="toggle_wp_debug" data-reload="true" data-confirm="true">Toggle WP Debug</span></li>
+<li>
+    <span class="open__child">Change page to homepage</span>
     <div class="action__setting">
-        <input type="text" name="page_id" placeholder="Page id">
+        <select name="page_id">
+            <option value="">Select a page</option>
+            <?php
+            $pages = get_pages(['sort_column' => 'post_title', 'sort_order' => 'asc']);
+            foreach ($pages as $page) {
+                printf(
+                    '<option value="%d">%s</option>',
+                    esc_attr($page->ID),
+                    esc_html($page->post_title)
+                );
+            }
+            ?>
+        </select>
+
         <?php ai_assistant_render_spark_button('change_default_page'); ?>
     </div>
 </li>
+
 <li><span class="open__child">Create Page</span>
     <div class="action__setting">
         <input type="text" name="page_name" placeholder="Page name"><br>
@@ -11,7 +27,7 @@
         <?php ai_assistant_render_spark_button('create_page_and_template_file'); ?>
     </div>
 </li>
-<li><span id="reset_permalink">Reset permalink</span></li>
+<li><span class="direct-action" data-action="reset_permalink" data-reload="true" data-confirm="true">Reset Permalink</span></li>
 <li><span class="open__child">Create User Type</span>
     <div class="action__setting">
         <input type="text" name="user_type" placeholder="User Type"><br>
@@ -92,3 +108,14 @@
         <?php ai_assistant_render_spark_button('create_template_part'); ?>
     </div>
 </li>
+<li>
+    <span class="open__child">Change admin email</span>
+    <div class="action__setting">
+        <input type="email" name="admin_email" id="admin_email_input" placeholder="Enter new admin email">
+        <?php ai_assistant_render_spark_button('change_admin_email'); ?>
+    </div>
+</li>
+
+
+
+

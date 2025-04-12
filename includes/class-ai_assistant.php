@@ -67,6 +67,7 @@ class AI_Assistant
         add_action('wp_ajax_get_custom_fields_from_url', [$this, 'get_custom_fields_from_url']);
         add_action('wp_ajax_set_homepage', [$this, 'set_homepage']);
         add_action('wp_ajax_reset_permalink', [$this, 'reset_permalink_structure']);
+        add_action('wp_ajax_toggle_wp_debug', [$this, 'ai_assistant_toggle_wp_debug']);
         $this->loader->add_action('wp_ajax_ai_assistant_create_theme', $this, 'ai_assistant_create_theme');
         add_action('wp_ajax_ai_assistant_create_theme', [$this, 'ai_assistant_create_theme']);
         add_action('wp_ajax_ai_assistant_get_theme_details', [$this, 'ai_assistant_get_theme_details']);
@@ -82,6 +83,10 @@ class AI_Assistant
         add_action('wp_ajax_ai_assistant_create_user_type', [$this, 'ai_assistant_create_user_type']);
         add_action('wp_ajax_ai_assistant_delete_user_role', [$this, 'ai_assistant_delete_user_role']);
         add_action('wp_ajax_ai_assistant_save_file', [$this, 'ai_assistant_save_file']);
+        add_action('wp_ajax_ai_assistant_change_admin_email', [$this, 'ai_assistant_change_admin_email_callback']);
+        add_action('wp_ajax_ai_assistant_change_user_language', [$this, 'ai_assistant_change_user_language_callback']);
+        add_action('wp_ajax_update_cf7_translated_messages', [$this, 'ai_assistant_update_cf7_translated_messages']);
+
         add_action('wp_ajax_get_custom_field_groups', [$this, 'get_custom_field_groups']);
         add_action('wp_ajax_get_custom_fields', [$this, 'get_custom_fields']);
         add_action('wp_ajax_save_codemirror_theme', [$this, 'save_codemirror_theme']);
@@ -370,6 +375,78 @@ add_action('customize_register', '{$functionName}');
         wp_send_json_success("File updated successfully!");
     }
 
+    function ai_assistant_change_admin_email_callback() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("You are not allowed to perform this action.");
+        }
+
+        $new_email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+
+        if (!is_email($new_email)) {
+            wp_send_json_error("Invalid email format.");
+        }
+
+        if (update_option('admin_email', $new_email)) {
+            wp_send_json_success("Admin email changed to: $new_email");
+        } else {
+            wp_send_json_error("Failed to update admin email.");
+        }
+    }
+
+    function ai_assistant_change_user_language_callback() {
+        if (!is_user_logged_in()) {
+            wp_send_json_error("Not logged in.");
+        }
+
+        $language = sanitize_text_field($_POST['language'] ?? '');
+        $available = get_available_languages();
+
+        if (!in_array($language, $available)) {
+            wp_send_json_error("Invalid language selected.");
+        }
+
+        $user_id = get_current_user_id();
+        update_user_meta($user_id, 'locale', $language);
+
+        wp_send_json_success("✅ Language changed to: $language");
+    }
+
+    function ai_assistant_update_cf7_translated_messages() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("Permission denied.");
+        }
+
+        $form_id = intval($_POST['form_id'] ?? 0);
+        $messages_json = $_POST['messages_json'] ?? [];
+
+        if (!$form_id || empty($messages_json) || !is_array($messages_json)) {
+            wp_send_json_error("Missing or invalid data.");
+        }
+
+        $updated_messages = [];
+
+        // Directly copy each string key => value into array
+        foreach ($messages_json as $key => $value) {
+            $updated_messages[$key] = sanitize_text_field($value);
+        }
+
+        update_post_meta($form_id, '_messages', $updated_messages);
+        wp_send_json_success("✅ Messages updated successfully.");
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     function get_acf_location_data()
     {
         if (!current_user_can('manage_options')) {
@@ -526,6 +603,44 @@ add_action('customize_register', '{$functionName}');
         }
 
         wp_send_json_success("Permalink structure reset to 'Post name', rewrite rules flushed, and cache cleared.");
+    }
+
+    function ai_assistant_toggle_wp_debug() {
+        // Only allow admins
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("Unauthorized access.");
+        }
+
+        $config_path = ABSPATH . 'wp-config.php';
+
+        if (!file_exists($config_path) || !is_writable($config_path)) {
+            wp_send_json_error("Cannot access wp-config.php.");
+        }
+
+        $config = file_get_contents($config_path);
+        if ($config === false) {
+            wp_send_json_error("Failed to read wp-config.php.");
+        }
+
+        // Match current WP_DEBUG line
+        $pattern = "/(define\s*\(\s*['\"]WP_DEBUG['\"]\s*,\s*)(true|false)(\s*\)\s*;)/i";
+
+        if (preg_match($pattern, $config, $matches)) {
+            $current_value = strtolower($matches[2]);
+            $new_value = ($current_value === 'true') ? 'false' : 'true';
+            $new_line = $matches[1] . $new_value . $matches[3];
+
+            // Replace in file
+            $updated_config = preg_replace($pattern, $new_line, $config, 1);
+
+            if (file_put_contents($config_path, $updated_config)) {
+                wp_send_json_success("WP_DEBUG set to {$new_value}.");
+            } else {
+                wp_send_json_error("Failed to write to wp-config.php.");
+            }
+        } else {
+            wp_send_json_error("WP_DEBUG definition not found.");
+        }
     }
 
     public function ai_assistant_create_theme()
