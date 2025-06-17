@@ -1162,6 +1162,7 @@ jQuery(document).ready(function ($) {
         create_page_and_template_file: handleCreatePageAndTemplate,
         create_menu: handleCreateMenu,
         correct_header: handleCorrectHeader,
+        correct_page: handleCorrectPage,
         correct_footer: handleCorrectFooter,
         correct_menu: handleCorrectMenu,
         create_custom_post_type: handleCreateCPT,
@@ -1277,6 +1278,14 @@ jQuery(document).ready(function ($) {
         if (!headerContent) return showAlert("❌ Header content is required.", "danger");
 
         sendAjax({action: "ai_assistant_correct_header", header_content: headerContent}, _this);
+    }
+
+    // handle Correction of Header
+    function handleCorrectPage(_this, $) {
+        const pageContent = _this.closest('li').find('textarea[name="page_content"]').val().trim();
+        if (!pageContent) return showAlert("❌ Page content is required.", "danger");
+
+        sendAjax({action: "ai_assistant_correct_page", page_content: pageContent}, _this);
     }
 
     //handle Correction of Footer

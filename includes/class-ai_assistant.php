@@ -75,6 +75,7 @@ class AI_Assistant
         add_action('wp_ajax_ai_assistant_create_menu', [$this, 'ai_assistant_create_menu']);
         add_action('wp_ajax_ai_assistant_correct_header', [$this, 'ai_assistant_correct_header']);
         add_action('wp_ajax_ai_assistant_correct_footer', [$this, 'ai_assistant_correct_footer']);
+        add_action('wp_ajax_ai_assistant_correct_page', [$this, 'ai_assistant_correct_page']);
         add_action('wp_ajax_ai_assistant_correct_menu', [$this, 'ai_assistant_detect_and_convert_menu']);
         add_action('wp_ajax_ai_assistant_get_theme_files', [$this, 'ai_assistant_get_theme_files']);
         add_action('wp_ajax_ai_assistant_load_theme_file', [$this, 'ai_assistant_load_theme_file']);
@@ -965,6 +966,89 @@ get_header(); ?>
 
         // ✅ 9. Extract content inside <body> and append to header.php
         if (preg_match('/<body[^>]*>(.*)$/is', $header_content, $body_content)) {
+            $body_html = trim($body_content[1]);
+
+            if (!empty(trim($body_html))) {
+                if (file_put_contents($header_path, "\n<!-- Content from header correction -->\n{$body_html}\n", FILE_APPEND) === false) {
+                    wp_send_json_error("Failed to update header.php.");
+                } else {
+                    wp_send_json_success("Header processed, class preserved, and content appended successfully.");
+                }
+            } else {
+                wp_send_json_error("Extracted <body> content is empty.");
+            }
+        } else {
+            wp_send_json_error("No valid <body> content found in header.");
+        }
+
+    }
+
+
+    // correct header
+    public function ai_assistant_correct_page()
+    {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("Unauthorized access.");
+        }
+
+        $header_content = stripslashes($_POST['page_content']);
+        if (empty($page_content)) {
+            wp_send_json_error("No header content received.");
+        }
+
+
+
+        // ✅ 1. Replace <a href="index.html|index.php"> with home_url()
+        $page_content = preg_replace(
+            '/<a([^>]+)href=["\']([^"\']*(index\.html|index\.php))["\']/i',
+            '<a$1href="<?php echo home_url(); ?>"',
+            $page_content
+        );
+
+        // ✅ 6. Replace internal <img src=""> with bloginfo('template_url')
+        $page_content = preg_replace_callback(
+            '/<img([^>]+)src=["\']([^"\':]+)["\']/i',
+            function ($matches) {
+                $src = $matches[2];
+                return '<img' . $matches[1] . 'src="<?php bloginfo(\'template_url\'); ?>/' . ltrim($src, '/') . '"';
+            },
+            $page_content
+        );
+
+
+        // ✅ 7. Extract class from <body> if it exists
+        $body_class = '';
+        if (preg_match('/<body[^>]*class=["\']([^"\']+)["\']/i', $page_content, $matches)) {
+            $body_class = trim($matches[1]); // Extract existing classes
+        }
+
+        // ✅ 8. Modify `body_class();` in `header.php` if class exists
+        if (!empty($body_class)) {
+            $header_php_content = file_get_contents($header_path);
+
+            // ✅ Check if `body_class();` exists in header.php
+            if (strpos($header_php_content, 'body_class()') !== false) {
+                // Append extracted class inside `body_class()`
+                $header_php_content = preg_replace(
+                    '/body_class\(\)/',
+                    'body_class("' . esc_attr($body_class) . '")',
+                    $header_php_content
+                );
+            } else {
+                // If `body_class();` is missing, insert the full <body> tag with class
+                $header_php_content = preg_replace(
+                    '/<body([^>]*)>/i',
+                    '<body$1 <?php body_class("' . esc_attr($body_class) . '"); ?>>',
+                    $header_php_content
+                );
+            }
+
+            // ✅ Save updated header.php with merged class
+            file_put_contents($header_path, $header_php_content);
+        }
+
+        // ✅ 9. Extract content inside <body> and append to header.php
+        if (preg_match('/<body[^>]*>(.*)$/is', $page_content, $body_content)) {
             $body_html = trim($body_content[1]);
 
             if (!empty(trim($body_html))) {

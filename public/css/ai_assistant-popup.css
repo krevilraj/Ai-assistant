@@ -207,6 +207,7 @@
 
 /* Alert container styling */
 .custom-alert {
+    /*display: none !important;*/
     position: fixed;
     top: 20px;
     right: -400px; /* Start off-screen to the right */
@@ -299,3 +300,5 @@ ul.task-list li.active .open__child::after {
 .action__setting .text-align-right{
     text-align: right;
 }
+
+/* line 210 */

@@ -27,6 +27,8 @@
                 <li><button data-command="the_excerpt">The Excerpt</button></li>
                 <li><button data-command="get_template_part">Get Template Part</button></li>
                 <li><button data-command="template_url">Template Url</button></li>
+                <li><button data-command="do_shortcode">Shortcode</button></li>
+
             </ul>
             <h5>ACF</h5>
             <ul class="coding_action__list">

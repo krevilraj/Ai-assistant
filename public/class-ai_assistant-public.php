@@ -99,7 +99,7 @@ class AI_Assistant_Public {
 		 */
 
 		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/ai_assistant-public.js', array( 'jquery' ), $this->version, false );
-        wp_enqueue_script( $this->plugin_name . '-popup', plugin_dir_url( __FILE__ ) . 'js/ai_assistant-popup.js', array( 'jquery' ), $this->version, false );
+//        wp_enqueue_script( $this->plugin_name . '-popup', plugin_dir_url( __FILE__ ) . 'js/ai_assistant-popup.js', array( 'jquery' ), $this->version, false );
         // Localize script to pass ajaxurl to JavaScript
         wp_localize_script( $this->plugin_name, 'ajax_object', array( 'ajax_url' => admin_url( 'admin-ajax.php' ) ) );
 	}

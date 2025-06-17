@@ -10,6 +10,7 @@ const wordpressSnippetHandlers = {
     the_field_image: () => insertSnippetV2(`<?php the_field('image@cursor@'); ?>`),
     the_field_link: () => insertSnippetV2(`<?php the_field('link@cursor@'); ?>`),
     template_url: () => insertSnippetV2(`<?php bloginfo('template_url'); ?>@cursor@`),
+    do_shortcode: () => insertSnippetV2(`<?php echo do_shortcode('@cursor@'); ?>`),
     convert_to_translatable_text: () => insertSnippetV3('get_text_domain',`<?php echo __('@content@','@processedtext@@cursor@'); ?>`),
     the_field_link_array: () => insertSnippetV2(`<?php
     $link_array = get_field('@cursor@'); 
