@@ -1036,6 +1036,10 @@ jQuery(document).ready(function ($) {
             confirm: "Are you sure you want to reset permalinks to 'Post name'?",
             defaultError: "Failed to reset permalinks."
         },
+        correct_page: {
+            confirm: "Are you sure you want to correct page?",
+            defaultError: "Failed to correct page."
+        },
         custom_no_confirm: {
             confirm: "", // no prompt needed
             defaultError: "Custom action failed."
@@ -1096,6 +1100,7 @@ jQuery(document).ready(function ($) {
 });
 
 function showAlert(message, type) {
+
     // Remove existing alerts
     jQuery(".custom-alert").remove();
 

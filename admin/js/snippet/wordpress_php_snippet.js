@@ -59,7 +59,7 @@ endif;
         $custom_logo_id = get_theme_mod('custom_logo');
         $logo = wp_get_attachment_image($custom_logo_id, 'full', false, array('class' => 'img-fluid'));
         echo $logo;
-    }`),
+    } ?>`),
     page_link: (link) => insertSnippetV2(`${link}@cursor@`, 1),
     first_class: () => insertSnippetV2(`<?php if($i==0) echo '@content@@cursor@';?>`),
     even_class: () => insertSnippetV2(`<?php if($i%2==0) echo '@content@@cursor@';?>`),

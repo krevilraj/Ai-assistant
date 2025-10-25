@@ -120,6 +120,7 @@ class AI_Assistant_Admin
         wp_localize_script($this->plugin_name, 'ajax_object',[
             'text_domain' => $text_domain,
             'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce'    => wp_create_nonce('ai_assistant_nonce'),
             'is_admin' => current_user_can('administrator') ? '1' : '0',
             'saved_theme' => get_option('ai_assistant_codemirror_theme', 'default')]);
 

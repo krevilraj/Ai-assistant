@@ -233,24 +233,125 @@ function get_text_domain() {
 }
 
 
+/* ===========================
+ * Server Action (Secure + Nonce)
+ * =========================== */
+(function ($) {
+    // --- Helpers ---
+    function dcShowAlert(msg, type) {
+        if (typeof window.showAlert === "function") window.showAlert(msg, type);
+        else alert(msg);
+    }
+    function dcToBool(v) { return v === true || v === "true" || v === 1 || v === "1"; }
+    function dcGetSelectedText() {
+        try {
+            if (window.aiAssistantEditor && typeof window.aiAssistantEditor.getDoc === "function") {
+                const doc = window.aiAssistantEditor.getDoc();
+                const sel = doc.getSelection();
+                if (sel && sel.trim().length) return sel;
+            }
+        } catch (e) {}
+        if (typeof window.selectedText === "string" && window.selectedText.trim().length) return window.selectedText;
+        try { return String(window.getSelection ? window.getSelection() : ""); } catch (e) { return ""; }
+    }
+    function dcReplaceSelectionWith(text) {
+        if (typeof window.replaceSelectedTextInsideEditor === "function") {
+            window.replaceSelectedTextInsideEditor(text, "");
+            return true;
+        }
+        if (window.aiAssistantEditor && typeof window.aiAssistantEditor.getDoc === "function") {
+            const doc = window.aiAssistantEditor.getDoc();
+            const ranges = doc.listSelections();
+            if (ranges && ranges.length) doc.replaceSelection(text, "around");
+            else doc.replaceRange(text, doc.getCursor());
+            window.aiAssistantEditor.focus();
+            return true;
+        }
+        return false;
+    }
 
+    // --- Main: Server Action handler ---
+    $(document).on("click", ".server-action", function () {
+        const $btn = $(this);
+        const action               = $btn.data("action");
+        if (!action) return;
 
+        const reload               = dcToBool($btn.data("reload"));
+        const confirmRequired      = dcToBool($btn.data("confirm"));
+        const confirmText          = $btn.data("confirmText") || `Are you sure to run "${action}"?`;
+        const wantsPayload         = dcToBool($btn.data("payload"));
+        const mustSelect           = dcToBool($btn.data("mustSelect"));
+        const replaceWithResponse  = dcToBool($btn.data("replaceWithResponse"));
+        const successMessage       = ($btn.data("successMessage") || "").toString().trim();
+        const errorMessage         = ($btn.data("errorMessage") || "").toString().trim() || "❌ AJAX error occurred.";
 
+        // --- Build request data ---
+        const data = { action: action };
 
+        // ✅ Include nonce if available
+        if (window.ajax_object && ajax_object.nonce) {
+            data._ajax_nonce = ajax_object.nonce;
+        } else if ($btn.data("nonce")) {
+            data._ajax_nonce = $btn.data("nonce");
+        }
 
+        // --- Handle selection payload ---
+        let selectedText = "";
+        if (wantsPayload || mustSelect) {
+            selectedText = dcGetSelectedText();
+            if (mustSelect && (!selectedText || !selectedText.trim().length)) {
+                dcShowAlert("⚠️ Please select some text in the editor first.", "danger");
+                return;
+            }
+        }
+        if (wantsPayload) data.content = (selectedText || "").toString();
 
+        // --- Handle optional data-extra='{"foo":"bar"}' ---
+        const extra = $btn.data("extra");
+        if (extra) {
+            try {
+                const obj = (typeof extra === "object") ? extra : JSON.parse(extra);
+                Object.assign(data, obj);
+            } catch (e) {
+                console.warn("⚠️ Invalid JSON in data-extra:", extra);
+            }
+        }
 
+        const runAjax = () => {
+            $.ajax({
+                url: (window.ajax_object && ajax_object.ajax_url) ? ajax_object.ajax_url : "",
+                type: "POST",
+                data: data,
+                success: function (response) {
+                    if (response && response.success) {
+                        if (replaceWithResponse) {
+                            let replacement = "";
+                            if (typeof response.data === "string") {
+                                replacement = response.data;
+                            } else if (response.data?.replacement) {
+                                replacement = response.data.replacement;
+                            } else if (response.data?.content) {
+                                replacement = response.data.content;
+                            }
+                            const ok = dcReplaceSelectionWith(replacement);
+                            if (!ok) console.warn("⚠️ Could not replace selection (no editor?).");
+                        }
+                        dcShowAlert(successMessage || response.data || "✅ Success.", "success");
+                        if (reload) location.reload();
+                    } else {
+                        dcShowAlert(errorMessage, "danger");
+                    }
+                },
+                error: function () {
+                    dcShowAlert(errorMessage, "danger");
+                }
+            });
+        };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+        if (confirmRequired) {
+            if (confirm(confirmText)) runAjax();
+        } else {
+            runAjax();
+        }
+    });
+})(jQuery);
