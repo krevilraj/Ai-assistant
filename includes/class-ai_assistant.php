@@ -992,45 +992,43 @@ get_header(); ?>
             wp_send_json_error('Unauthorized access.', 403);
         }
 
-        // 3) Get raw HTML (do NOT sanitize with sanitize_text_field; it strips HTML)
+        // 3) Read raw HTML (keep HTML intact)
         $raw = isset($_POST['content']) ? $_POST['content'] : ( $_POST['page_content'] ?? '' );
         if ( empty($raw) ) {
             wp_send_json_error('No page content received.');
         }
-        $page_content = wp_unslash($raw); // correct way to remove slashes from POST
+        $page_content = wp_unslash($raw);
 
         // =========================
         // Transformations / Fixes
         // =========================
 
-        // ✅ A) Replace <a href="index.html|index.php"> with home_url()
-        //    Keep attributes left intact, only swap the href value to home_url()
+        // ✅ A) Replace <a href="index.html|index.php"> with a literal PHP echo of home_url()
+        //     We keep other <a> attributes intact; only swap the href value.
         $page_content = preg_replace(
             '/<a([^>]+)href=["\']([^"\']*(?:index\.html|index\.php))["\']/i',
-            '<a$1href="' . esc_url( home_url() ) . '"',
+            '<a$1href="<?php echo home_url(); ?>"',
             $page_content
         );
 
-        // ✅ B) Replace internal <img src=""> with absolute URL from current theme directory
-        //    - Leaves absolute (http/https) and data: URLs unchanged
-        //    - Converts relative src to: get_template_directory_uri() . '/' . path
-        $theme_uri = get_template_directory_uri();
+        // ✅ B) Replace internal <img src="relative"> with a literal PHP bloginfo('template_url')
+        //     Leaves absolute/data/mailto/tel/hash sources untouched.
         $page_content = preg_replace_callback(
             '/<img([^>]+)src=["\']([^"\']+)["\']/i',
-            function ($m) use ($theme_uri) {
+            function ($m) {
                 $attrs = $m[1];
                 $src   = $m[2];
 
-                // If absolute URL, protocol-relative, anchors, data URIs, mailto/tel — leave as is
+                // Skip absolute/protocol-relative/data/mailto/tel/hash
                 if (preg_match('~^(?:https?:)?//|data:|mailto:|tel:|#~i', $src)) {
                     return $m[0];
                 }
 
-                // Otherwise treat as relative -> point to theme directory
+                // Treat as relative path
                 $src = ltrim($src, '/');
-                $new = $theme_uri . '/' . $src;
 
-                return '<img' . $attrs . 'src="' . esc_url($new) . '"';
+                // Return literal PHP tag in the HTML string
+                return '<img' . $attrs . 'src="<?php bloginfo(\'template_url\'); ?>/' . $src . '"';
             },
             $page_content
         );
@@ -1038,6 +1036,7 @@ get_header(); ?>
         // 4) Return processed HTML
         wp_send_json_success($page_content);
     }
+
 
 
     // correct footer
