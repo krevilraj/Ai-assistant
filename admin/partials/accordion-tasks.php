@@ -48,23 +48,10 @@
                         data-error-message="❌ Failed to process."
                         data-confirm="true"
                         data-reload="false">
-                    Correct Header
+                    Correct page
                 </span>
             </li>
 
-
-<!--            <li>-->
-<!--                <span class="open__child">Correct Page</span>-->
-<!--                <div class="action__setting">-->
-<!--                    <div class="text-align-right">-->
-<!--                        <textarea name="page_content" id="" cols="30" rows="10"-->
-<!--                                  placeholder="Put all the content of the static page"></textarea>-->
-<!---->
-<!--                        --><?php //ai_assistant_render_spark_button('correct_page'); ?>
-<!--                    </div>-->
-<!---->
-<!--                </div>-->
-<!--            </li>-->
 
             <li>
                 <span class="open__child">Correct Footer</span>
