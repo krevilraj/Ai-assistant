@@ -93,6 +93,12 @@ class AI_Assistant
         add_action('wp_ajax_save_codemirror_theme', [$this, 'save_codemirror_theme']);
         add_action('admin_body_class', [$this, 'add_dark_theme_body_class']);
         add_action('wp_ajax_ai_assistant_create_template_part', [$this, 'ai_assistant_create_template_part']);
+        add_action('wp_ajax_ai_assistant_search_pages', [$this, 'ai_assistant_search_pages_callback']);
+
+
+        add_action('wp_ajax_get_pages_list', [$this, 'ai_assistant_handle_get_pages_list']);
+        add_action('admin_enqueue_scripts', [$this, 'ai_assistant_enqueue_pages_list_assets']);
+
         add_action('wp_ajax_upload_theme_image', [$this, 'upload_theme_image']);
         add_action('wp_ajax_save_customizer_code', [$this, 'save_customizer_code']);
 
@@ -434,18 +440,6 @@ add_action('customize_register', '{$functionName}');
         update_post_meta($form_id, '_messages', $updated_messages);
         wp_send_json_success("✅ Messages updated successfully.");
     }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     function get_acf_location_data()
@@ -1542,6 +1536,88 @@ PHP;
         }
 
         wp_send_json_success("Template file created successfully: partial-{$filename}.php");
+    }
+
+    function ai_assistant_handle_get_pages_list() {
+        check_ajax_referer('pages_nonce', 'nonce');
+
+        $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+
+        $args = array(
+            'post_type' => 'page',
+            'posts_per_page' => -1,
+            'post_status' => 'publish,draft,private',
+            'orderby' => 'title',
+            'order' => 'ASC'
+        );
+
+        if (!empty($search)) {
+            $args['s'] = $search;
+        }
+
+        $pages = get_posts($args);
+
+        if (empty($pages)) {
+            wp_send_json_success(array(
+                'html' => '<div class="no-pages">No pages found</div>'
+            ));
+        }
+
+        ob_start();
+        foreach ($pages as $page) {
+            $edit_url = get_edit_post_link($page->ID);
+            $view_url = get_permalink($page->ID);
+            $status = get_post_status($page->ID);
+            $status_class = 'status-' . $status;
+            ?>
+            <div class="page-item <?php echo esc_attr($status_class); ?>">
+                <div class="page-info">
+                    <div class="page-title"><?php echo esc_html($page->post_title); ?></div>
+                    <div class="page-meta">
+                        <span class="page-status"><?php echo esc_html(ucfirst($status)); ?></span>
+                        <span class="page-id">ID: <?php echo esc_html($page->ID); ?></span>
+                        <span class="page-date"><?php echo esc_html(get_the_date('M j, Y', $page->ID)); ?></span>
+                    </div>
+                </div>
+                <div class="page-actions">
+                    <a href="<?php echo esc_url($edit_url); ?>" class="btn-edit" target="_blank">
+                        <span class="dashicons dashicons-edit"></span> Edit
+                    </a>
+                    <a href="<?php echo esc_url($view_url); ?>" class="btn-view" target="_blank">
+                        <span class="dashicons dashicons-visibility"></span> View
+                    </a>
+                </div>
+            </div>
+            <?php
+        }
+        $html = ob_get_clean();
+
+        wp_send_json_success(array(
+            'html' => $html,
+            'count' => count($pages)
+        ));
+    }
+
+    function ai_assistant_enqueue_pages_list_assets() {
+        wp_enqueue_script(
+            'pages-list-script',
+            plugin_dir_url(__FILE__) . 'js/pages-list.js',
+            array('jquery'),
+            '1.0.0',
+            true
+        );
+
+        wp_localize_script('pages-list-script', 'pagesListAjax', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('pages_nonce')
+        ));
+
+        wp_enqueue_style(
+            'pages-list-style',
+            plugin_dir_url(__FILE__) . 'css/pages-list.css',
+            array(),
+            '1.0.0'
+        );
     }
 
 

@@ -577,4 +577,249 @@
     background: #ddd;
 }
 
+/** popup pages css **/
+/* Search Container */
+.search-container {
+    position: relative;
+    margin-bottom: 15px;
+}
 
+.search-input {
+    width: 100%;
+    padding: 10px 40px 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+
+.search-icon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+/* Pages List Container */
+.pages-list-container {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    margin-bottom: 15px;
+}
+
+.pages-list {
+    max-height: 450px;
+    overflow-y: auto;
+}
+
+/* Custom Scrollbar */
+.pages-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.pages-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.pages-list::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.pages-list::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Page Item */
+.page-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #fff;
+    transition: all 0.2s ease;
+    min-height: 45px;
+}
+
+.page-item:hover {
+    background: #f8f9fa;
+    border-left: 3px solid #2271b1;
+    padding-left: 9px;
+}
+
+.page-item:last-child {
+    border-bottom: none;
+}
+
+/* Page Info */
+.page-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    min-width: 0;
+}
+
+.page-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #2c3338;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 200px;
+    max-width: 300px;
+}
+
+.page-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: #646970;
+    flex-shrink: 0;
+}
+
+.page-status {
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.status-publish .page-status {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-draft .page-status {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-private .page-status {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.page-id,
+.page-date {
+    color: #8c8f94;
+}
+
+/* Page Actions */
+.page-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.btn-edit,
+.btn-view {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1px solid;
+    font-weight: 500;
+}
+
+.btn-edit {
+    background: #2271b1;
+    color: #fff;
+    border-color: #2271b1;
+}
+
+.btn-edit:hover {
+    background: #135e96;
+    border-color: #135e96;
+    color: #fff;
+}
+
+.btn-view {
+    background: #fff;
+    color: #2271b1;
+    border-color: #2271b1;
+}
+
+.btn-view:hover {
+    background: #2271b1;
+    color: #fff;
+}
+
+.btn-edit .dashicons,
+.btn-view .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+}
+
+/* Loading and Error States */
+.loading,
+.error,
+.no-pages {
+    text-align: center;
+    padding: 40px 20px;
+    color: #646970;
+    font-size: 14px;
+}
+
+.error {
+    color: #d63638;
+}
+
+/* Open Popup Button */
+.open-popup-btn {
+    background: #2271b1;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s ease;
+}
+
+.open-popup-btn:hover {
+    background: #135e96;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .page-actions {
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .btn-edit,
+    .btn-view {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .page-meta {
+        flex-wrap: wrap;
+    }
+}

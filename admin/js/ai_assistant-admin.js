@@ -439,6 +439,68 @@ jQuery(document).ready(function ($) {
 
     });
 
+
+    /** pages popu **/
+
+
+
+
+});
+
+jQuery(document).ready(function($) {
+    let searchTimeout;
+
+    // Load pages on page load
+    loadPages();
+
+    // Search functionality
+    $('#page-search').on('keyup', function() {
+        clearTimeout(searchTimeout);
+        const searchTerm = $(this).val();
+
+        searchTimeout = setTimeout(function() {
+            loadPages(searchTerm);
+        }, 300); // Delay for better performance
+    });
+
+    // Function to load pages via AJAX
+    function loadPages(search = '') {
+        const $pagesList = $('#pages-list');
+
+        // Show loading state
+        $pagesList.html('<div class="loading">Loading pages...</div>');
+
+        $.ajax({
+            url: pagesListAjax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'get_pages_list',
+                nonce: pagesListAjax.nonce,
+                search: search
+            },
+            success: function(response) {
+                if (response.success) {
+                    $pagesList.html(response.data.html);
+
+                    // Update count if you want to show it
+                    if (response.data.count !== undefined) {
+                        console.log('Pages found: ' + response.data.count);
+                    }
+                } else {
+                    $pagesList.html('<div class="error">Error loading pages</div>');
+                }
+            },
+            error: function() {
+                $pagesList.html('<div class="error">Failed to load pages. Please try again.</div>');
+            }
+        });
+    }
+
+    // Optional: Refresh pages button (if you add one)
+    $(document).on('click', '#refresh-pages', function() {
+        $('#page-search').val('');
+        loadPages();
+    });
 });
 
 
