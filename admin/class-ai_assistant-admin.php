@@ -165,6 +165,16 @@ class AI_Assistant_Admin
             'ai_assistant-theme-editor',
             [$this, 'display_theme_editor_page']
         );
+
+        // 🔥 NEW: Live CSS Editor submenu
+        add_submenu_page(
+            'ai_assistant-settings',
+            __('Live CSS Editor', 'ai_assistant'),
+            __('Live CSS Editor', 'ai_assistant'),
+            'manage_options',
+            'ai_assistant-live-css-editor',
+            [$this, 'display_live_css_editor_page']
+        );
     }
 
     //display setting page
@@ -216,6 +226,94 @@ class AI_Assistant_Admin
     public function display_theme_editor_page()
     {
         include plugin_dir_path(__FILE__) . 'pages/custom_theme_editor.php';
+    }
+
+    public function display_live_css_editor_page()
+    {
+        if ( ! current_user_can('manage_options') ) {
+            wp_die( esc_html__( 'You do not have permission to access this page.', 'ai_assistant' ) );
+        }
+
+        $option_name = 'live_css_sync_api_key';
+        $message     = '';
+
+        // Regenerate key
+        if ( isset( $_POST['ai_assistant_regenerate_live_css_key'] ) ) {
+            check_admin_referer( 'ai_assistant_regenerate_live_css_key' );
+            $new_key = wp_generate_password( 32, false );
+            update_option( $option_name, $new_key );
+            $message = __( 'API key regenerated successfully.', 'ai_assistant' );
+        }
+
+        // Ensure key exists
+        $api_key = get_option( $option_name );
+        if ( empty( $api_key ) ) {
+            $api_key = wp_generate_password( 32, false );
+            update_option( $option_name, $api_key );
+        }
+
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e( 'Live CSS Editor', 'ai_assistant' ); ?></h1>
+
+            <?php if ( ! empty( $message ) ) : ?>
+                <div class="notice notice-success is-dismissible">
+                    <p><?php echo esc_html( $message ); ?></p>
+                </div>
+            <?php endif; ?>
+
+            <p><?php esc_html_e( 'Use this API key in your Chrome extension to connect to this site.', 'ai_assistant' ); ?></p>
+
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row">
+                        <label for="ai-assistant-live-css-api-key">
+                            <?php esc_html_e( 'API Key', 'ai_assistant' ); ?>
+                        </label>
+                    </th>
+                    <td>
+                        <input type="text"
+                               id="ai-assistant-live-css-api-key"
+                               class="regular-text"
+                               readonly
+                               value="<?php echo esc_attr( $api_key ); ?>" />
+                        <p class="description">
+                            <?php esc_html_e( 'Click inside the field and press Ctrl+C to copy.', 'ai_assistant' ); ?>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+
+            <form method="post">
+                <?php wp_nonce_field( 'ai_assistant_regenerate_live_css_key' ); ?>
+                <p>
+                    <button type="submit"
+                            name="ai_assistant_regenerate_live_css_key"
+                            class="button button-secondary">
+                        <?php esc_html_e( 'Regenerate API Key', 'ai_assistant' ); ?>
+                    </button>
+                </p>
+            </form>
+
+            <h2><?php esc_html_e( 'Chrome Extension Setup', 'ai_assistant' ); ?></h2>
+            <ol>
+                <li>
+                    <?php
+                    printf(
+                        esc_html__( 'In the extension popup, set "WordPress Site URL" to: %s', 'ai_assistant' ),
+                        '<code>' . esc_url( home_url( '/' ) ) . '</code>'
+                    );
+                    ?>
+                </li>
+                <li>
+                    <?php esc_html_e( 'Paste the API key above into the extension\'s API Key field.', 'ai_assistant' ); ?>
+                </li>
+                <li>
+                    <?php esc_html_e( 'Click "Test Connection" in the extension. It should show a success message.', 'ai_assistant' ); ?>
+                </li>
+            </ol>
+        </div>
+        <?php
     }
 
 

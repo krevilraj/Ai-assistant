@@ -1,0 +1,13 @@
+1. create new files and folder in filemanager
+2. popup for custom fields and snippet
+3. admin bar which page edit that page
+4. upload the zip process automatically and log everything
+5. slider and section 
+6. create cpt single and archive page
+7. install woocommerce and setting all the pages
+8. duplicate cpt, page, post
+9. export and import cpt
+10. youtube link make dynamic
+11. change /./ to /assets
+12. upload featured image for pages
+13. easy for css developer

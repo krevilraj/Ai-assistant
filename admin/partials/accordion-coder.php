@@ -75,7 +75,7 @@
 
             <h5>WPML Translation</h5>
             <ul class="coding_action__list">
-                <li><button data-command="convert_to_translatable_text">Conver Translatable Text</button></li>
+                <li><button data-command="convert_to_translatable_text">Convert Translatable Text</button></li>
 
             </ul>
 

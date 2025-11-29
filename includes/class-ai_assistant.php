@@ -40,6 +40,12 @@ class AI_Assistant
         $this->version = '1.0.0';
 
         $this->load_dependencies();
+
+        // 🔥 init Live CSS REST routes
+        if ( class_exists( 'AI_Assistant_Live_CSS' ) ) {
+            AI_Assistant_Live_CSS::init();
+        }
+
         $this->set_locale();
         $this->define_admin_hooks();
         $this->define_public_hooks();
@@ -299,6 +305,8 @@ add_action('customize_register', '{$functionName}');
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-ai_assistant-i18n.php'; // Ensure this is included
         require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class-ai_assistant-admin.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'public/class-ai_assistant-public.php';
+
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-ai_assistant-live-css.php';
 
         $this->loader = new AI_Assistant_Loader();
     }
