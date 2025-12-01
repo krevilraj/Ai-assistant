@@ -501,6 +501,96 @@ jQuery(document).ready(function($) {
         $('#page-search').val('');
         loadPages();
     });
+
+
+
+    /**
+     * Small helper: use showAlert if available, else fallback to alert()
+     */
+    function aiNotify(message, type) {
+        if (typeof showAlert === 'function') {
+            showAlert(message, type || 'success');
+        } else {
+            alert(message);
+        }
+    }
+
+
+    // 📝 Create new file (full path from theme root)
+    $(document).on('click', '#ai-create-file', function (e) {
+        e.preventDefault();
+
+        const filePath = prompt(
+            'Enter FULL file path relative to the theme root.\n' +
+            'Examples:\n' +
+            '  templates/home.php\n' +
+            '  partials/blocks/section.php'
+        );
+
+        if (!filePath) {
+            return;
+        }
+
+        $.ajax({
+            url: ajax_object.ajax_url,
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'ai_assistant_create_file',
+                file_path: filePath
+            },
+            success: function (response) {
+                if (response.success) {
+                    aiNotify(response.data, 'success');
+                    location.reload();
+                } else {
+                    aiNotify(response.data || '❌ Failed to create file.', 'danger');
+                }
+            },
+            error: function () {
+                aiNotify('❌ Error while creating file.', 'danger');
+            }
+        });
+    });
+
+    // 📁 Create new folder (full path from theme root)
+    $(document).on('click', '#ai-create-folder', function (e) {
+        e.preventDefault();
+
+        const folderPath = prompt(
+            'Enter FULL folder path relative to the theme root.\n' +
+            'Examples:\n' +
+            '  templates\n' +
+            '  partials/blocks\n' +
+            '  assets/css'
+        );
+
+        if (!folderPath) {
+            return;
+        }
+
+        $.ajax({
+            url: ajax_object.ajax_url,
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'ai_assistant_create_folder',
+                folder_path: folderPath
+            },
+            success: function (response) {
+                if (response.success) {
+                    aiNotify(response.data, 'success');
+                    location.reload();
+                } else {
+                    aiNotify(response.data || '❌ Failed to create folder.', 'danger');
+                }
+            },
+            error: function () {
+                aiNotify('❌ Error while creating folder.', 'danger');
+            }
+        });
+    });
+
 });
 
 

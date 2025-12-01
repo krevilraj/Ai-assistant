@@ -108,6 +108,10 @@ class AI_Assistant
         add_action('wp_ajax_upload_theme_image', [$this, 'upload_theme_image']);
         add_action('wp_ajax_save_customizer_code', [$this, 'save_customizer_code']);
 
+        // Create file / folder in theme
+        add_action('wp_ajax_ai_assistant_create_file', [$this, 'ai_assistant_create_file']);
+        add_action('wp_ajax_ai_assistant_create_folder', [$this, 'ai_assistant_create_folder']);
+
     }
 
     function save_customizer_code()
@@ -1298,42 +1302,88 @@ class WP_Bootstrap_Navwalker extends Walker_Nav_Menu {
         wp_send_json_success(['files' => array_values($files)]);
     }
 
-    // Delete files and folder
-    function ai_assistant_delete_file()
+    // 🗑 Delete file or folder (recursively)
+    public function ai_assistant_delete_file()
     {
         if (!current_user_can('manage_options')) {
             wp_send_json_error("❌ Unauthorized access.");
         }
 
-        $theme_dir = get_stylesheet_directory();
-        $file_path = sanitize_text_field($_POST['file_path']);
-        $full_path = $theme_dir . '/' . $file_path;
+        if (empty($_POST['file_path'])) {
+            wp_send_json_error("❌ Missing file or folder path.");
+        }
+
+        // Relative path from theme root (what JS sends)
+        $relative_path = sanitize_text_field(wp_unslash($_POST['file_path']));
+        $relative_path = ltrim($relative_path, "/\\");
+
+        // Security: no going outside theme
+        if (strpos($relative_path, '..') !== false) {
+            wp_send_json_error("❌ Invalid path.");
+        }
+
+        $theme_dir = realpath(get_stylesheet_directory());
+        if (!$theme_dir) {
+            wp_send_json_error("❌ Theme directory not found.");
+        }
+
+        $theme_dir = wp_normalize_path($theme_dir);
+        $full_path = wp_normalize_path($theme_dir . '/' . $relative_path);
+
+        // Ensure the path is actually inside the theme directory
+        if (strpos($full_path, $theme_dir) !== 0) {
+            wp_send_json_error("❌ Access denied.");
+        }
 
         if (!file_exists($full_path)) {
             wp_send_json_error("❌ File or folder not found.");
         }
 
-        // 🗑 Delete folder or file
+        // Folder → recursive delete, File → unlink
         if (is_dir($full_path)) {
-            delete_folder($full_path);
+            $this->ai_assistant_delete_folder_recursive($full_path);
         } else {
-            unlink($full_path);
-        }
-        wp_send_json_success("✅ Successfully deleted: " . basename($file_path));
-    }
-
-    // Recursive folder deletion
-    function delete_folder($folder)
-    {
-        foreach (glob($folder . '/*') as $file) {
-            if (is_dir($file)) {
-                delete_folder($file);
-            } else {
-                unlink($file);
+            if (!@unlink($full_path)) {
+                wp_send_json_error("❌ Failed to delete file.");
             }
         }
-        rmdir($folder);
+
+        wp_send_json_success("✅ Successfully deleted: " . basename($relative_path));
     }
+
+    /**
+     * Recursive folder deletion (internal helper)
+     */
+    private function ai_assistant_delete_folder_recursive($folder)
+    {
+        $folder = wp_normalize_path($folder);
+
+        if (!is_dir($folder)) {
+            return;
+        }
+
+        $items = scandir($folder);
+        if (!is_array($items)) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+
+            $path = $folder . '/' . $item;
+
+            if (is_dir($path)) {
+                $this->ai_assistant_delete_folder_recursive($path);
+            } else {
+                @unlink($path);
+            }
+        }
+
+        @rmdir($folder);
+    }
+
 
     // ✅ Load file content for editor
     public function ai_assistant_load_theme_file()
@@ -1627,6 +1677,95 @@ PHP;
             '1.0.0'
         );
     }
+
+
+    public function ai_assistant_create_file() {
+        if ( ! current_user_can( 'edit_theme_options' ) ) {
+            wp_send_json_error( '❌ Unauthorized access.' );
+        }
+
+        if ( empty( $_POST['file_path'] ) ) {
+            wp_send_json_error( '❌ Missing file path.' );
+        }
+
+        $relative_path = ltrim( sanitize_text_field( wp_unslash( $_POST['file_path'] ) ), '/\\' );
+
+        if ( strpos( $relative_path, '..' ) !== false ) {
+            wp_send_json_error( '❌ Invalid path.' );
+        }
+
+        $theme_dir = realpath( get_stylesheet_directory() );
+        if ( ! $theme_dir ) {
+            wp_send_json_error( '❌ Theme directory not found.' );
+        }
+
+        $theme_dir = wp_normalize_path( $theme_dir );
+        $target    = wp_normalize_path( $theme_dir . '/' . $relative_path );
+
+        if ( strpos( $target, $theme_dir ) !== 0 ) {
+            wp_send_json_error( '❌ Access denied.' );
+        }
+
+        $parent_dir = dirname( $target );
+        if ( ! is_dir( $parent_dir ) ) {
+            if ( ! wp_mkdir_p( $parent_dir ) ) {
+                wp_send_json_error( '❌ Failed to create parent directory.' );
+            }
+        }
+
+        if ( file_exists( $target ) ) {
+            wp_send_json_error( '❌ File already exists.' );
+        }
+
+        $filename        = basename( $relative_path );
+        $default_content = "<?php\n\n// {$filename} created by AI Assistant.\n";
+
+        if ( file_put_contents( $target, $default_content ) === false ) {
+            wp_send_json_error( '❌ Failed to create file.' );
+        }
+
+        wp_send_json_success( '✅ File created: ' . $relative_path );
+    }
+
+    public function ai_assistant_create_folder() {
+        if ( ! current_user_can( 'edit_theme_options' ) ) {
+            wp_send_json_error( '❌ Unauthorized access.' );
+        }
+
+        if ( empty( $_POST['folder_path'] ) ) {
+            wp_send_json_error( '❌ Missing folder path.' );
+        }
+
+        $relative_path = ltrim( sanitize_text_field( wp_unslash( $_POST['folder_path'] ) ), '/\\' );
+
+        if ( strpos( $relative_path, '..' ) !== false ) {
+            wp_send_json_error( '❌ Invalid path.' );
+        }
+
+        $theme_dir = realpath( get_stylesheet_directory() );
+        if ( ! $theme_dir ) {
+            wp_send_json_error( '❌ Theme directory not found.' );
+        }
+
+        $theme_dir = wp_normalize_path( $theme_dir );
+        $target    = wp_normalize_path( $theme_dir . '/' . $relative_path );
+
+        if ( strpos( $target, $theme_dir ) !== 0 ) {
+            wp_send_json_error( '❌ Access denied.' );
+        }
+
+        if ( is_dir( $target ) ) {
+            wp_send_json_error( '❌ Folder already exists.' );
+        }
+
+        if ( ! wp_mkdir_p( $target ) ) {
+            wp_send_json_error( '❌ Failed to create folder.' );
+        }
+
+        wp_send_json_success( '✅ Folder created: ' . $relative_path );
+    }
+
+
 
 
 }

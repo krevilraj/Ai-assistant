@@ -46,11 +46,23 @@ function list_theme_files($dir, $relative_path = '', $base_url = '?page=ai_assis
         <h2>Theme Files</h2>
     </div>
     <div class="inside">
-        <!-- ✅ HTML Structure -->
+
+        <div class="ai-themefiles-actions" style="margin-bottom:10px;">
+            <button type="button" class="button button-small" id="ai-create-file">
+                + New File
+            </button>
+            <button type="button" class="button button-small" id="ai-create-folder">
+                + New Folder
+            </button>
+            <p class="description" style="margin-top:6px;">
+                Always use full path from theme root, e.g.
+                <code>templates/home.php</code> or <code>partials/blocks</code>.
+            </p>
+        </div>
+
         <ul class="file-list" id="theme-files-list">
-            <?php list_theme_files(get_stylesheet_directory()); ?>
+            <?php list_theme_files( get_stylesheet_directory() ); ?>
         </ul>
-
-
     </div>
 </div>
+
