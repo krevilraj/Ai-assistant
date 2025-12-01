@@ -112,6 +112,11 @@ class AI_Assistant
         add_action('wp_ajax_ai_assistant_create_file', [$this, 'ai_assistant_create_file']);
         add_action('wp_ajax_ai_assistant_create_folder', [$this, 'ai_assistant_create_folder']);
 
+        // admin bar to edit template php file
+        add_action( 'admin_bar_menu', [ $this, 'ai_assistant_add_admin_bar_link' ], 90 );
+
+
+
     }
 
     function save_customizer_code()
@@ -1765,6 +1770,54 @@ PHP;
         wp_send_json_success( '✅ Folder created: ' . $relative_path );
     }
 
+    public function ai_assistant_add_admin_bar_link( $wp_admin_bar ) {
+        // Only on frontend, logged in, with proper capability
+        if ( is_admin() || ! is_user_logged_in() || ! current_user_can( 'edit_theme_options' ) ) {
+            return;
+        }
+
+        global $template;
+
+        if ( empty( $template ) ) {
+            return;
+        }
+
+        $theme_dir = realpath( get_stylesheet_directory() );
+        if ( ! $theme_dir ) {
+            return;
+        }
+
+        $theme_dir       = wp_normalize_path( $theme_dir );
+        $current_template = wp_normalize_path( $template );
+
+        // Only if current template is inside active theme
+        if ( strpos( $current_template, $theme_dir ) !== 0 ) {
+            return;
+        }
+
+        // Get relative path, e.g. "page.php" or "templates/home.php"
+        $relative_path = ltrim( substr( $current_template, strlen( $theme_dir ) ), '/\\' );
+
+        // 🔴 IMPORTANT: change this slug to whatever you use for this page
+        // This should match the slug used in add_menu_page()/add_submenu_page()
+        // that renders custom_theme_editor.php
+        $editor_url = add_query_arg(
+            [
+                'page' => 'ai_assistant-theme-editor', // <-- CHANGE IF NEEDED
+                'file' => $relative_path,              // 👈 matches your custom_theme_editor.php: $_GET['file']
+            ],
+            admin_url( 'admin.php' )
+        );
+
+        $wp_admin_bar->add_node( [
+            'id'    => 'ai-assistant-edit-template',
+            'title' => 'Edit with AI Editor',
+            'href'  => $editor_url,
+            'meta'  => [
+                'title' => 'Edit this template in the AI editor',
+            ],
+        ] );
+    }
 
 
 
