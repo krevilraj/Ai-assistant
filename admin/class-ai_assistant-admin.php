@@ -93,54 +93,122 @@ class AI_Assistant_Admin
      *
      * @since    1.0.0
      */
-    public function enqueue_scripts()
-    {
+    public function enqueue_scripts() {
 
-        /**
-         * This function is provided for demonstration purposes only.
-         *
-         * An instance of this class should be passed to the run() function
-         * defined in AI_Assistant_Loader as all of the hooks are defined
-         * in that particular class.
-         *
-         * The AI_Assistant_Loader will then create the relationship
-         * between the defined hooks and the functions defined in this
-         * class.
-         */
+        // === Enqueue base scripts ===
+        wp_enqueue_script(
+            $this->plugin_name . '-theme-switch1',
+            plugin_dir_url(__FILE__) . 'js/ai_assistant-theme-switch.js',
+            array('jquery'),
+            $this->version,
+            false
+        );
 
+        wp_enqueue_script(
+            $this->plugin_name,
+            plugin_dir_url(__FILE__) . 'js/ai_assistant-admin.js',
+            array('jquery'),
+            $this->version,
+            false
+        );
 
-        wp_enqueue_script($this->plugin_name.'-theme-switch1', plugin_dir_url(__FILE__) . 'js/ai_assistant-theme-switch.js', array('jquery'), $this->version, false);
-        wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/ai_assistant-admin.js', array('jquery'), $this->version, false);
-        wp_enqueue_script($this->plugin_name . '-popup', plugin_dir_url(dirname(__FILE__)) . 'public/js/ai_assistant-popup.js', array('jquery'), $this->version, false);
-        wp_enqueue_script($this->plugin_name.'-coder-snippet', plugin_dir_url(__FILE__) . 'js/ai_assistant_snippet.js', array('jquery'), $this->version, false);
-        wp_enqueue_script( $this->plugin_name . '-popup', plugin_dir_url( __FILE__ ) . 'js/ai_assistant-popup.js', array( 'jquery' ), $this->version, false );
-        // Localize script to pass ajaxurl to JavaScript
+        // Popup JS (for the admin-bar popup, including WPML tab)
+        wp_enqueue_script(
+            $this->plugin_name . '-popup',
+            plugin_dir_url(dirname(__FILE__)) . 'public/js/ai_assistant-popup.js',
+            array('jquery'),
+            $this->version,
+            false
+        );
+
+        wp_enqueue_script(
+            $this->plugin_name . '-coder-snippet',
+            plugin_dir_url(__FILE__) . 'js/ai_assistant_snippet.js',
+            array('jquery'),
+            $this->version,
+            false
+        );
+
+        // ========= LOCALIZE (existing object – keep it) =========
         $text_domain = wp_get_theme()->get('TextDomain');
 
-        wp_localize_script($this->plugin_name, 'ajax_object',[
-            'text_domain' => $text_domain,
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'nonce'    => wp_create_nonce('ai_assistant_nonce'),
-            'is_admin' => current_user_can('administrator') ? '1' : '0',
-            'saved_theme' => get_option('ai_assistant_codemirror_theme', 'default')]);
+        wp_localize_script(
+            $this->plugin_name,
+            'ajax_object',
+            array(
+                'text_domain'  => $text_domain,
+                'ajax_url'     => admin_url('admin-ajax.php'),
+                'nonce'        => wp_create_nonce('ai_assistant_nonce'),
+                'is_admin'     => current_user_can('administrator') ? '1' : '0',
+                'saved_theme'  => get_option('ai_assistant_codemirror_theme', 'default'),
+            )
+        );
 
-        // Load WordPress CodeMirror library
+        // ========= NEW: LOCALIZE FOR WPML TAB (current post id + nonce) =========
+
+        // Try to detect current post ID on edit screens (post/page/CPT)
+        $current_post_id = 0;
+        if ( is_admin() ) {
+            global $post;
+            if ( $post instanceof WP_Post ) {
+                $current_post_id = (int) $post->ID;
+            } elseif ( isset($_GET['post']) ) { // fallback
+                $current_post_id = (int) $_GET['post'];
+            }
+        }
+
+        wp_localize_script(
+            $this->plugin_name . '-popup',
+            'aiAssistantAdmin',
+            array(
+                'ajax_url'        => admin_url('admin-ajax.php'),
+                'nonce'           => wp_create_nonce('ai_assistant_wpml'),
+                'current_post_id' => $current_post_id,
+            )
+        );
+
+        // ========= CodeMirror / editor stuff (unchanged) =========
         wp_enqueue_script('code-editor');
         wp_enqueue_style('code-editor');
         wp_enqueue_script('jquery');
 
-        // Localize script for JS usage
-        wp_add_inline_script('code-editor', 'jQuery(document).ready(function($) { aiAssistantInitEditor(); });');
+        wp_add_inline_script(
+            'code-editor',
+            'jQuery(document).ready(function($) { aiAssistantInitEditor(); });'
+        );
+
         if (isset($_GET['page']) && $_GET['page'] === 'ai_assistant-theme-editor') {
-            wp_enqueue_script('codemirror-foldcode', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldcode.min.js', ['wp-codemirror'], null, true);
-            wp_enqueue_script('codemirror-foldgutter', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.js', ['wp-codemirror'], null, true);
-            wp_enqueue_script('codemirror-brace-fold', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/brace-fold.min.js', ['wp-codemirror'], null, true);
-            wp_enqueue_script('codemirror-comment-fold', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/comment-fold.min.js', ['wp-codemirror'], null, true);
+            wp_enqueue_script(
+                'codemirror-foldcode',
+                'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldcode.min.js',
+                array('wp-codemirror'),
+                null,
+                true
+            );
+            wp_enqueue_script(
+                'codemirror-foldgutter',
+                'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.js',
+                array('wp-codemirror'),
+                null,
+                true
+            );
+            wp_enqueue_script(
+                'codemirror-brace-fold',
+                'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/brace-fold.min.js',
+                array('wp-codemirror'),
+                null,
+                true
+            );
+            wp_enqueue_script(
+                'codemirror-comment-fold',
+                'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/comment-fold.min.js',
+                array('wp-codemirror'),
+                null,
+                true
+            );
         }
-
-
-
     }
+
 
 
     public function add_admin_menu()

@@ -115,9 +115,19 @@ class AI_Assistant
         // admin bar to edit template php file
         add_action( 'admin_bar_menu', [ $this, 'ai_assistant_add_admin_bar_link' ], 90 );
 
+        //change the visit store and visit site to open in different tab
+        add_action( 'admin_bar_menu', [ $this, 'ai_assistant_admin_bar_open_new_tab' ], 999 );
+        add_action( 'wp_ajax_ai_assistant_get_meta_json', [ $this, 'ai_assistant_get_meta_json' ] );
+        add_action( 'wp_ajax_ai_assistant_update_meta_from_json', [ $this, 'ai_assistant_update_meta_from_json' ] );
+        add_action( 'admin_head', [ $this, 'ai_assistant_imp_style' ] );
+
+
+
 
 
     }
+
+
 
     function save_customizer_code()
     {
@@ -1803,8 +1813,8 @@ PHP;
         // that renders custom_theme_editor.php
         $editor_url = add_query_arg(
             [
-                'page' => 'ai_assistant-theme-editor', // <-- CHANGE IF NEEDED
-                'file' => $relative_path,              // 👈 matches your custom_theme_editor.php: $_GET['file']
+                'page' => 'ai_assistant-theme-editor',
+                'file' => $relative_path,
             ],
             admin_url( 'admin.php' )
         );
@@ -1819,6 +1829,128 @@ PHP;
         ] );
     }
 
+    public function ai_assistant_admin_bar_open_new_tab( $wp_admin_bar ) {
+
+        // IDs we want to change. Adjust / extend if needed.
+        $ids = array(
+            'view-site',        // Default "Visit Site"
+            'view-store',       // WooCommerce "Visit Store" (common)
+            'woocommerce-store' // Alternative ID in some WooCommerce versions
+        );
+
+        foreach ( $ids as $id ) {
+            $node = $wp_admin_bar->get_node( $id );
+
+            if ( $node ) {
+                // Ensure meta exists as array
+                if ( empty( $node->meta ) || ! is_array( $node->meta ) ) {
+                    $node->meta = array();
+                }
+
+                // Force open in new tab
+                $node->meta['target'] = '_blank';
+
+                // Re-add the modified node
+                $wp_admin_bar->add_node( $node );
+            }
+        }
+    }
+
+    function ai_assistant_get_meta_json() {
+        check_ajax_referer( 'ai_assistant_wpml', 'nonce' );
+
+        $post_id = isset( $_POST['post_id'] ) ? (int) $_POST['post_id'] : 0;
+        if ( ! $post_id ) {
+            wp_send_json_error( array( 'message' => 'Missing post ID.' ) );
+        }
+
+        $raw_meta = get_post_meta( $post_id );
+        $meta     = array();
+
+        foreach ( $raw_meta as $key => $values ) {
+            // Skip some noisy internal keys if you want
+            if ( in_array( $key, array( '_edit_lock', '_edit_last' ), true ) ) {
+                continue;
+            }
+
+            // Keep both simple and array values
+            if ( count( $values ) === 1 ) {
+                $meta[ $key ] = maybe_unserialize( $values[0] );
+            } else {
+                $meta[ $key ] = array_map( 'maybe_unserialize', $values );
+            }
+        }
+
+        wp_send_json_success(
+            array(
+                'meta' => $meta,
+            )
+        );
+    }
+
+    function ai_assistant_update_meta_from_json() {
+        check_ajax_referer( 'ai_assistant_wpml', 'nonce' );
+
+        $post_id = isset( $_POST['post_id'] ) ? (int) $_POST['post_id'] : 0;
+        if ( ! $post_id ) {
+            wp_send_json_error( array( 'message' => 'Missing post ID.' ) );
+        }
+
+        $json = isset( $_POST['meta_json'] ) ? wp_unslash( $_POST['meta_json'] ) : '';
+        if ( ! $json ) {
+            wp_send_json_error( array( 'message' => 'Missing JSON data.' ) );
+        }
+
+        $data = json_decode( $json, true );
+        if ( ! is_array( $data ) ) {
+            wp_send_json_error( array( 'message' => 'Invalid JSON data.' ) );
+        }
+
+        foreach ( $data as $key => $value ) {
+            if ( ! is_string( $key ) || $key === '' ) {
+                continue;
+            }
+
+            // Optional: skip WordPress internal meta
+            if ( in_array( $key, array( '_edit_lock', '_edit_last' ), true ) ) {
+                continue;
+            }
+
+            // Remove existing meta for that key
+            delete_post_meta( $post_id, $key );
+
+            if ( is_array( $value ) ) {
+                // multiple values
+                foreach ( $value as $single ) {
+                    add_post_meta( $post_id, $key, $single );
+                }
+            } else {
+                // single value
+                update_post_meta( $post_id, $key, $value );
+            }
+        }
+
+        wp_send_json_success( array( 'message' => 'Custom fields updated successfully.' ) );
+    }
+
+    function ai_assistant_imp_style() {
+
+        // If AI_DB is NOT defined OR is defined but FALSE → hide UI
+        if ( !defined('AI_DB') || (defined('AI_DB') && AI_DB === false) ) {
+            ?>
+            <style>
+                #toplevel_page_ai_assistant-settings {
+                    display: none !important;
+                }
+                tr[data-plugin="Ai-assistant/ai_assistant.php"],
+                #wp-admin-bar-ai_assistant {
+                    display: none !important;
+                }
+            </style>
+            <?php
+        }
+
+    }
 
 
 }

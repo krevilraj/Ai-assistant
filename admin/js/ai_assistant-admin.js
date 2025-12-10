@@ -594,6 +594,149 @@ jQuery(document).ready(function($) {
 });
 
 
+jQuery(document).ready(function ($) {
+
+    // Copy JSON from current post/page
+    $('#ai-wpml-copy-json').on('click', function (e) {
+        e.preventDefault();
+
+        if (typeof aiAssistantAdmin === 'undefined' || !aiAssistantAdmin.current_post_id) {
+            alert('No post ID found. Please use this on a post/page edit screen.');
+            return;
+        }
+
+        $.post(aiAssistantAdmin.ajax_url, {
+            action: 'ai_assistant_get_meta_json',
+            nonce: aiAssistantAdmin.nonce,
+            post_id: aiAssistantAdmin.current_post_id
+        }).done(function (response) {
+            if (response.success && response.data && response.data.meta) {
+                $('#wpml_json_original').val(
+                    JSON.stringify(response.data.meta, null, 2)
+                );
+            } else {
+                alert((response.data && response.data.message) || 'Error fetching custom fields.');
+            }
+        }).fail(function () {
+            alert('AJAX error fetching custom fields.');
+        });
+    });
+
+    // Update JSON back to custom fields
+    $('#ai-wpml-update-json').on('click', function (e) {
+        e.preventDefault();
+
+        if (typeof aiAssistantAdmin === 'undefined' || !aiAssistantAdmin.current_post_id) {
+            alert('No post ID found. Please use this on a post/page edit screen.');
+            return;
+        }
+
+        var raw = $('#wpml_json_translated').val().trim();
+        if (!raw) {
+            alert('Please paste translated JSON in the second textarea.');
+            return;
+        }
+
+        let parsed;
+        try {
+            parsed = JSON.parse(raw);
+        } catch (err) {
+            alert('Invalid JSON. Please check the format.');
+            return;
+        }
+
+        $.post(aiAssistantAdmin.ajax_url, {
+            action: 'ai_assistant_update_meta_from_json',
+            nonce: aiAssistantAdmin.nonce,
+            post_id: aiAssistantAdmin.current_post_id,
+            meta_json: JSON.stringify(parsed)
+        }).done(function (response) {
+            if (response.success) {
+                alert(response.data.message || 'Custom fields updated successfully.');
+            } else {
+                alert((response.data && response.data.message) || 'Error updating custom fields.');
+            }
+        }).fail(function () {
+            alert('AJAX error updating custom fields.');
+        });
+    });
+
+
+
+
+
+    // Helper: copy text to clipboard
+    function aiAssistantCopyToClipboard(text) {
+        if (!text) {
+            alert('Nothing to copy.');
+            return;
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () {
+                // optional: console.log('Copied');
+            }).catch(function () {
+                fallbackCopy(text);
+            });
+        } else {
+            fallbackCopy(text);
+        }
+
+        function fallbackCopy(t) {
+            var temp = document.createElement('textarea');
+            temp.style.position = 'fixed';
+            temp.style.left = '-9999px';
+            temp.value = t;
+            document.body.appendChild(temp);
+            temp.select();
+            try {
+                document.execCommand('copy');
+            } catch (e) {}
+            document.body.removeChild(temp);
+        }
+    }
+
+    // Copy JSON only
+    $('#ai-wpml-copy-json-only').on('click', function (e) {
+        e.preventDefault();
+        var json = $('#wpml_json_original').val().trim();
+        if (!json) {
+            alert('Original JSON is empty. Click "Copy JSON from this page" first.');
+            return;
+        }
+        aiAssistantCopyToClipboard(json);
+        alert('JSON copied to clipboard.');
+    });
+
+    // Copy JSON with AI prompt
+    $('#ai-wpml-copy-json-with-prompt').on('click', function (e) {
+        e.preventDefault();
+        var json = $('#wpml_json_original').val().trim();
+        if (!json) {
+            alert('Original JSON is empty. Click "Copy JSON from this page" first.');
+            return;
+        }
+
+        var langLabel = $('#wpml-language option:selected').text().trim();
+        if (!langLabel) {
+            langLabel = 'this language';
+        }
+
+        var prompt =
+            'Translate this JSON to ' + langLabel +
+            '. Keep the same keys. Only translate the text values. ' +
+            'Return only JSON, easy to copy:\n\n' + json;
+
+        aiAssistantCopyToClipboard(prompt);
+        alert('Prompt + JSON copied to clipboard. Paste it into ChatGPT.');
+    });
+
+
+
+});
+
+
+
 
 
 

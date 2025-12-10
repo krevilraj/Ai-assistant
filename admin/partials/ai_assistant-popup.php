@@ -14,6 +14,7 @@
             <button class="custom-tab" data-tab="apply_acf">Apply ACF</button>
             <button class="custom-tab" data-tab="additional_settings">Additional Settings</button>
             <button class="custom-tab" data-tab="wp_pages">Pages</button>
+            <button class="custom-tab" data-tab="wp_wpml">Wpml</button>
         </div>
 
         <!-- Tab Content -->
@@ -101,6 +102,78 @@
 
 
         </div>
+
+        <div id="wp_wpml" class="custom-tab-content">
+            <h2>WPML – Custom Fields JSON</h2>
+
+            <!-- Language selector (just for your own reference) -->
+            <div class="wpml-language-select">
+                <label for="wpml-language">Target Language:</label>
+                <select id="wpml-language">
+                    <option value="">Select language…</option>
+                    <option value="en">English</option>
+                    <option value="fr">French</option>
+                    <!-- add more if needed -->
+                </select>
+            </div>
+
+            <hr>
+
+            <!-- Export section -->
+            <div class="wpml-json-section">
+                <h3>1. Copy JSON from current page/post</h3>
+                <p>
+                    Click the button below while you are on a post / page / custom post
+                    <strong>edit screen</strong>. It will read all custom fields (post meta)
+                    for this item and output them as JSON.
+                </p>
+
+                <button id="ai-wpml-copy-json" class="button button-secondary">
+                    Copy JSON from this page
+                </button>
+
+                <p><strong>Original JSON (source language)</strong></p>
+                <textarea id="wpml_json_original" rows="10" style="width:100%;"></textarea>
+
+                <p style="margin-top:8px;">
+                    <button id="ai-wpml-copy-json-only" class="button">
+                        Copy JSON
+                    </button>
+                    <button id="ai-wpml-copy-json-with-prompt" class="button button-secondary">
+                        Copy for AI (with prompt)
+                    </button>
+                </p>
+                <p class="description">
+                    The “Copy for AI” button will prepend an instruction like:<br>
+                    <code>Translate this JSON to French. Only return JSON, easy to copy.</code>
+                </p>
+
+            </div>
+
+            <hr>
+
+            <!-- Import / update section -->
+            <div class="wpml-json-section">
+                <h3>2. Paste translated JSON and update fields</h3>
+                <p>
+                    Translate the JSON above using AI or any tool, then paste the translated
+                    JSON here (keep the same structure and keys).
+                </p>
+
+                <textarea id="wpml_json_translated" rows="10" style="width:100%;"></textarea>
+
+                <p>
+                    <button id="ai-wpml-update-json" class="button button-primary">
+                        Update custom fields on this page
+                    </button>
+                </p>
+
+                <p class="description">
+                    ⚠ Use this only on the correct translated post / page (WPML language version).
+                </p>
+            </div>
+        </div>
+
     </div>
 </div>
 

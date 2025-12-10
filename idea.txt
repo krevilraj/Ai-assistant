@@ -11,3 +11,5 @@
 11. change /./ to /assets
 12. upload featured image for pages
 13. easy for css developer
+14. view homepage site in different tab
+
