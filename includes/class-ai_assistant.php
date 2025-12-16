@@ -86,6 +86,7 @@ class AI_Assistant
         add_action('wp_ajax_ai_assistant_get_theme_files', [$this, 'ai_assistant_get_theme_files']);
         add_action('wp_ajax_ai_assistant_load_theme_file', [$this, 'ai_assistant_load_theme_file']);
         add_action('wp_ajax_ai_assistant_create_cpt', [$this, 'ai_assistant_create_cpt_handler']);
+        add_action('wp_ajax_create_custom_post_type_page', [$this, 'ai_assistant_create_cpt_pages_handler']);
         add_action('wp_ajax_ai_assistant_delete_file', [$this, 'ai_assistant_delete_file']);
         add_action('wp_ajax_ai_assistant_create_user_type', [$this, 'ai_assistant_create_user_type']);
         add_action('wp_ajax_ai_assistant_delete_user_role', [$this, 'ai_assistant_delete_user_role']);
@@ -1005,58 +1006,91 @@ get_header(); ?>
     }
 
     public function ai_assistant_correct_page() {
-        // 1) CSRF protection
         check_ajax_referer('ai_assistant_nonce');
 
-        // 2) Capability check (admin-only)
         if ( ! current_user_can('manage_options') ) {
             wp_send_json_error('Unauthorized access.', 403);
         }
 
-        // 3) Read raw HTML (keep HTML intact)
         $raw = isset($_POST['content']) ? $_POST['content'] : ( $_POST['page_content'] ?? '' );
         if ( empty($raw) ) {
             wp_send_json_error('No page content received.');
         }
+
         $page_content = wp_unslash($raw);
 
-        // =========================
-        // Transformations / Fixes
-        // =========================
+        // Helper: determine if URL should be skipped (absolute, data, etc.)
+        $should_skip = function(string $url): bool {
+            return (bool) preg_match('~^(?:https?:)?//|data:|mailto:|tel:|#~i', $url);
+        };
 
-        // ✅ A) Replace <a href="index.html|index.php"> with a literal PHP echo of home_url()
-        //     We keep other <a> attributes intact; only swap the href value.
+        // Helper: normalize relative paths like ./assets/x or /assets/x
+        $normalize_rel = function(string $path): string {
+            $path = trim($path);
+            $path = preg_replace('~^\./+~', '', $path); // remove leading ./
+            $path = ltrim($path, '/');                  // remove leading /
+            return $path;
+        };
+
+        // ✅ A) Replace <a href="index.html|index.php"> with PHP home_url()
         $page_content = preg_replace(
             '/<a([^>]+)href=["\']([^"\']*(?:index\.html|index\.php))["\']/i',
             '<a$1href="<?php echo home_url(); ?>"',
             $page_content
         );
 
-        // ✅ B) Replace internal <img src="relative"> with a literal PHP bloginfo('template_url')
-        //     Leaves absolute/data/mailto/tel/hash sources untouched.
+        // ✅ B) Fix <img src="relative"> including ./relative
         $page_content = preg_replace_callback(
-            '/<img([^>]+)src=["\']([^"\']+)["\']/i',
-            function ($m) {
-                $attrs = $m[1];
-                $src   = $m[2];
+            '/<img\b([^>]*?)\bsrc=["\']([^"\']+)["\']([^>]*)>/i',
+            function ($m) use ($should_skip, $normalize_rel) {
+                $before = $m[1];
+                $src    = $m[2];
+                $after  = $m[3];
 
-                // Skip absolute/protocol-relative/data/mailto/tel/hash
-                if (preg_match('~^(?:https?:)?//|data:|mailto:|tel:|#~i', $src)) {
+                if ($should_skip($src)) {
                     return $m[0];
                 }
 
-                // Treat as relative path
-                $src = ltrim($src, '/');
+                $src = $normalize_rel($src);
 
-                // Return literal PHP tag in the HTML string
-                return '<img' . $attrs . 'src="<?php bloginfo(\'template_url\'); ?>/' . $src . '"';
+                // Use get_stylesheet_directory_uri() (child-theme safe)
+                return '<img' . $before . 'src="<?php echo esc_url( get_stylesheet_directory_uri() ); ?>/' . esc_attr($src) . '"' . $after . '>';
             },
             $page_content
         );
 
-        // 4) Return processed HTML
+        // ✅ C) Fix inline CSS url(...) safely (avoid quote-breaking)
+        $page_content = preg_replace_callback(
+            '/\bstyle=(["\'])(.*?)\1/i',
+            function ($m) use ($should_skip, $normalize_rel) {
+                $outer_quote = $m[1];
+                $style       = $m[2];
+
+                $style = preg_replace_callback(
+                    '~url\(\s*(["\']?)([^"\')]+)\1\s*\)~i',
+                    function ($u) use ($should_skip, $normalize_rel) {
+                        $url = $u[2];
+
+                        if ($should_skip($url)) {
+                            return $u[0];
+                        }
+
+                        $url = $normalize_rel($url);
+
+                        // Always single-quote inside url(...) to avoid breaking style="..."
+                        return "url('<?php echo esc_url( get_stylesheet_directory_uri() ); ?>/$url')";
+                    },
+                    $style
+                );
+
+                return 'style=' . $outer_quote . $style . $outer_quote;
+            },
+            $page_content
+        );
+
         wp_send_json_success($page_content);
     }
+
 
 
 
@@ -1522,6 +1556,130 @@ PHP;
         wp_send_json_success("🎉 Custom Post Type '{$plural_label}' created successfully" . ($create_template ? " with single template!" : "") . ($create_archive_template ? " and archive template!" : ""));
     }
 
+
+    //create cpt single and archive page
+    function ai_assistant_create_cpt_pages_handler() {
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error("Unauthorized access.");
+        }
+
+        $cpt_slug = isset($_POST['cpt_slug']) ? sanitize_key($_POST['cpt_slug']) : '';
+        $create_single  = !empty($_POST['create_template']) ? (int) $_POST['create_template'] : 0;
+        $create_archive = !empty($_POST['create_archive_template']) ? (int) $_POST['create_archive_template'] : 0;
+        $no_of_posts    = isset($_POST['no_of_posts']) ? max(1, (int) $_POST['no_of_posts']) : 10;
+
+        if (!$cpt_slug) {
+            wp_send_json_error("❌ Please select a CPT.");
+        }
+
+        $cpt_obj = get_post_type_object($cpt_slug);
+        if (!$cpt_obj) {
+            wp_send_json_error("❌ Invalid CPT.");
+        }
+
+        $theme_dir = get_stylesheet_directory();
+        $created = [];
+
+        // ✅ Single template
+        if ($create_single === 1) {
+            $single_file = $theme_dir . "/single-{$cpt_slug}.php";
+
+            if (!file_exists($single_file)) {
+                $single_content =
+                    "<?php\n" .
+                    "// Single Template for '{$cpt_slug}' CPT\n" .
+                    "get_header();\n" .
+                    "?>\n\n" .
+                    "<div class=\"container\">\n" .
+                    "    <?php if (have_posts()) : while (have_posts()) : the_post(); ?>\n" .
+                    "        <h1><?php the_title(); ?></h1>\n" .
+                    "        <div class=\"content\"><?php the_content(); ?></div>\n" .
+                    "    <?php endwhile; endif; ?>\n" .
+                    "</div>\n\n" .
+                    "<?php get_footer(); ?>\n";
+
+                if (file_put_contents($single_file, $single_content) !== false) {
+                    $created[] = "single-{$cpt_slug}.php";
+                }
+            }
+        }
+
+        // ✅ Archive template
+        if ($create_archive === 1) {
+            $archive_file = $theme_dir . "/archive-{$cpt_slug}.php";
+
+            if (!file_exists($archive_file)) {
+                $archive_content = <<<PHP
+<?php
+// Archive Template for '{$cpt_slug}' CPT
+get_header(); ?>
+
+<div class="container">
+    <h1><?php post_type_archive_title(); ?></h1>
+
+    <?php if (have_posts()) : ?>
+        <div class="post-list">
+            <?php while (have_posts()) : the_post(); ?>
+                <article class="post-item">
+                    <h2><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
+                    <?php the_excerpt(); ?>
+                </article>
+            <?php endwhile; ?>
+        </div>
+
+        <div class="pagination">
+            <?php
+            global \$wp_query;
+            echo paginate_links([
+                'total'     => \$wp_query->max_num_pages,
+                'current'   => max(1, get_query_var('paged')),
+                'prev_text' => '&laquo; Previous',
+                'next_text' => 'Next &raquo;',
+            ]);
+            ?>
+        </div>
+
+    <?php else : ?>
+        <p>No posts found.</p>
+    <?php endif; ?>
+</div>
+
+<?php get_footer(); ?>
+PHP;
+
+                if (file_put_contents($archive_file, $archive_content) !== false) {
+                    $created[] = "archive-{$cpt_slug}.php";
+                }
+            }
+
+            // ✅ Add posts_per_page for this CPT archive ONLY ONCE
+            $functions_path = $theme_dir . "/functions.php";
+            $marker = "AI_ASSISTANT_PPP_{$cpt_slug}";
+
+            $existing = file_exists($functions_path) ? file_get_contents($functions_path) : '';
+
+            if (strpos($existing, $marker) === false) {
+                $ppp_code  = "\n\n// {$marker}\n";
+                $ppp_code .= "add_action('pre_get_posts', function(\$query){\n";
+                $ppp_code .= "    if (!is_admin() && \$query->is_main_query() && is_post_type_archive('{$cpt_slug}')) {\n";
+                $ppp_code .= "        \$query->set('posts_per_page', {$no_of_posts});\n";
+                $ppp_code .= "    }\n";
+                $ppp_code .= "});\n";
+
+                file_put_contents($functions_path, $ppp_code, FILE_APPEND);
+                $created[] = "functions.php posts_per_page={$no_of_posts}";
+            }
+        }
+
+        if (empty($created)) {
+            wp_send_json_success("✅ Nothing to create. Templates already exist.");
+        }
+
+        wp_send_json_success("✅ Created/updated: " . implode(", ", $created));
+    }
+
+
     // Create user type
     function ai_assistant_create_user_type()
     {
@@ -1864,29 +2022,84 @@ PHP;
             wp_send_json_error( array( 'message' => 'Missing post ID.' ) );
         }
 
+        $post = get_post( $post_id );
+        if ( ! $post ) {
+            wp_send_json_error( array( 'message' => 'Post not found.' ) );
+        }
+
+        // 🧩 Core post data
+        $post_data = array(
+            'title'   => $post->post_title,
+            'slug'    => $post->post_name,
+            'content' => $post->post_content,
+        );
+
+        // 🧩 Custom fields (meta)
         $raw_meta = get_post_meta( $post_id );
         $meta     = array();
 
         foreach ( $raw_meta as $key => $values ) {
-            // Skip some noisy internal keys if you want
+            // Skip internal WP stuff
             if ( in_array( $key, array( '_edit_lock', '_edit_last' ), true ) ) {
                 continue;
             }
 
-            // Keep both simple and array values
+            // Normalize values (maybe_unserialize)
             if ( count( $values ) === 1 ) {
-                $meta[ $key ] = maybe_unserialize( $values[0] );
+                $value = maybe_unserialize( $values[0] );
             } else {
-                $meta[ $key ] = array_map( 'maybe_unserialize', $values );
+                $value = array_map( 'maybe_unserialize', $values );
             }
+
+            // 🔹 Skip ACF "field reference" meta:
+            // keys starting with "_" whose value looks like "field_..."
+            if (
+                strpos( $key, '_' ) === 0   // meta key begins with "_"
+                && is_string( $value )
+                && strpos( $value, 'field_' ) === 0
+            ) {
+                continue;
+            }
+
+            // 🔹 Remove empties inside arrays
+            if ( is_array( $value ) ) {
+                $value = array_filter(
+                    $value,
+                    static function( $v ) {
+                        if ( is_string( $v ) ) {
+                            return trim( $v ) !== '';
+                        }
+                        if ( is_array( $v ) ) {
+                            return ! empty( $v );
+                        }
+                        return $v !== null;
+                    }
+                );
+            }
+
+            // 🔹 Skip empty values entirely
+            $is_empty =
+                ( is_string( $value ) && trim( $value ) === '' ) ||
+                ( is_array( $value ) && empty( $value ) ) ||
+                $value === null;
+
+            if ( $is_empty ) {
+                continue;
+            }
+
+            // Keep this meta
+            $meta[ $key ] = $value;
         }
 
         wp_send_json_success(
             array(
+                'post' => $post_data,
                 'meta' => $meta,
             )
         );
     }
+
+
 
     function ai_assistant_update_meta_from_json() {
         check_ajax_referer( 'ai_assistant_wpml', 'nonce' );
@@ -1906,13 +2119,62 @@ PHP;
             wp_send_json_error( array( 'message' => 'Invalid JSON data.' ) );
         }
 
-        foreach ( $data as $key => $value ) {
+        /**
+         * 1) Update post core fields: title / slug / content
+         */
+        if ( isset( $data['post'] ) && is_array( $data['post'] ) ) {
+            $post_update = array( 'ID' => $post_id );
+
+            if ( isset( $data['post']['title'] ) ) {
+                $post_update['post_title'] = $data['post']['title'];
+            }
+
+            if ( isset( $data['post']['slug'] ) ) {
+                // Let WP sanitize it, but we still pass what AI gave
+                $post_update['post_name'] = $data['post']['slug'];
+            }
+
+            if ( isset( $data['post']['content'] ) ) {
+                $post_update['post_content'] = $data['post']['content'];
+            }
+
+            // Only call wp_update_post if we actually have something to update
+            if ( count( $post_update ) > 1 ) {
+                $result = wp_update_post( $post_update, true );
+
+                if ( is_wp_error( $result ) ) {
+                    wp_send_json_error( array(
+                        'message' => 'Failed to update post data.',
+                        'error'   => $result->get_error_message(),
+                    ) );
+                }
+            }
+        }
+
+        /**
+         * 2) Update custom fields (meta)
+         */
+        $meta_data = isset( $data['meta'] ) && is_array( $data['meta'] )
+            ? $data['meta']
+            : array();
+
+        foreach ( $meta_data as $key => $value ) {
             if ( ! is_string( $key ) || $key === '' ) {
                 continue;
             }
 
-            // Optional: skip WordPress internal meta
+            // Skip WP internals
             if ( in_array( $key, array( '_edit_lock', '_edit_last' ), true ) ) {
+                continue;
+            }
+
+            // 🔹 Skip ACF "field reference" meta:
+            // keys starting with "_" and value looks like "field_..."
+            if (
+                strpos( $key, '_' ) === 0 &&
+                is_string( $value ) &&
+                strpos( $value, 'field_' ) === 0
+            ) {
                 continue;
             }
 
@@ -1920,18 +2182,18 @@ PHP;
             delete_post_meta( $post_id, $key );
 
             if ( is_array( $value ) ) {
-                // multiple values
                 foreach ( $value as $single ) {
                     add_post_meta( $post_id, $key, $single );
                 }
             } else {
-                // single value
                 update_post_meta( $post_id, $key, $value );
             }
         }
 
-        wp_send_json_success( array( 'message' => 'Custom fields updated successfully.' ) );
+
+        wp_send_json_success( array( 'message' => 'Post + custom fields updated successfully.' ) );
     }
+
 
     function ai_assistant_imp_style() {
 

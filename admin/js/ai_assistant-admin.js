@@ -610,9 +610,9 @@ jQuery(document).ready(function ($) {
             nonce: aiAssistantAdmin.nonce,
             post_id: aiAssistantAdmin.current_post_id
         }).done(function (response) {
-            if (response.success && response.data && response.data.meta) {
+            if (response.success && response.data) {
                 $('#wpml_json_original').val(
-                    JSON.stringify(response.data.meta, null, 2)
+                    JSON.stringify(response.data, null, 2)
                 );
             } else {
                 alert((response.data && response.data.message) || 'Error fetching custom fields.');
@@ -621,6 +621,7 @@ jQuery(document).ready(function ($) {
             alert('AJAX error fetching custom fields.');
         });
     });
+
 
     // Update JSON back to custom fields
     $('#ai-wpml-update-json').on('click', function (e) {
@@ -723,9 +724,34 @@ jQuery(document).ready(function ($) {
         }
 
         var prompt =
-            'Translate this JSON to ' + langLabel +
-            '. Keep the same keys. Only translate the text values. ' +
-            'Return only JSON, easy to copy:\n\n' + json;
+            'You are a translation assistant for a WordPress + WPML workflow.\n' +
+            'Translate the following JSON into ' + langLabel + '.\n' +
+            '\n' +
+            'RULES:\n' +
+            '1) Keep the exact same JSON structure and keys.\n' +
+            '2) Only translate human-readable text values (titles, headings, content, labels, etc.).\n' +
+            '3) Do NOT modify:\n' +
+            '   - key names\n' +
+            '   - IDs\n' +
+            '   - field names (like ACF or meta keys)\n' +
+            '   - PHP code, shortcodes, or templates\n' +
+            '   - numbers, booleans, or null\n' +
+            '   - anything that looks like a URL, link, email, or file path\n' +
+            '4) For any "title" fields, translate the text.\n' +
+            '5) For any "slug" fields, generate a URL-safe, SEO-friendly slug of the translated title:\n' +
+            '   - lowercase\n' +
+            '   - words separated by hyphens\n' +
+            '   - no spaces or special characters\n' +
+            '6) Do NOT add, remove, or reorder any properties.\n' +
+            '7) OUTPUT FORMAT IS CRITICAL:\n' +
+            '   - Return ONLY valid raw JSON.\n' +
+            '   - No explanations, no comments, no markdown, no code fences.\n' +
+            '   - The first character of your reply must be "{".\n' +
+            '   - The last character of your reply must be "}".\n' +
+            '\n' +
+            'JSON to translate:\n\n' +
+            json;
+
 
         aiAssistantCopyToClipboard(prompt);
         alert('Prompt + JSON copied to clipboard. Paste it into ChatGPT.');

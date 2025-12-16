@@ -823,3 +823,230 @@
         flex-wrap: wrap;
     }
 }
+
+
+/*  for ACF apply */
+/* =========================
+   Apply ACF Popup UI (scoped)
+   ========================= */
+
+#apply_acf{
+    --ac-bg: #ffffff;
+    --ac-muted: #f6f7f7;
+    --ac-muted-2: #fbfbfc;
+    --ac-border: #dcdcde;
+    --ac-text: #1d2327;
+    --ac-sub: #50575e;
+    --ac-primary: #2271b1;
+    --ac-primary-soft: rgba(34,113,177,.10);
+    --ac-shadow: 0 6px 18px rgba(0,0,0,.06);
+    --ac-radius: 14px;
+    --ac-radius-sm: 10px;
+    --ac-gap: 12px;
+}
+
+#apply_acf *{ box-sizing:border-box; }
+
+/* Title spacing */
+#apply_acf h3{
+    margin: 0 0 12px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ac-text);
+}
+
+/* =========================
+   Accordion (card style)
+   ========================= */
+#apply_acf #field-groups-accordion .accordion-item{
+    background: var(--ac-bg);
+    border: 1px solid var(--ac-border);
+    border-radius: var(--ac-radius);
+    overflow: hidden;
+    margin: 12px 0;
+    box-shadow: 0 1px 0 rgba(0,0,0,.02);
+}
+
+#apply_acf #field-groups-accordion .accordion-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 14px;
+    padding: 14px 16px;
+    background: linear-gradient(0deg, var(--ac-muted), var(--ac-muted));
+    border-bottom: 1px solid var(--ac-border);
+    cursor:pointer;
+}
+
+#apply_acf #field-groups-accordion .accordion-header span:first-child{
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ac-text);
+}
+
+#apply_acf #field-groups-accordion .accordion-header span:last-child{
+    font-size: 12px;
+    color: var(--ac-sub);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+#apply_acf #field-groups-accordion .accordion-item.is-open .accordion-header{
+    background: linear-gradient(0deg, var(--ac-primary-soft), var(--ac-muted));
+}
+
+#apply_acf #field-groups-accordion .accordion-content{
+    padding: 14px 16px 16px;
+}
+
+/* Optional: make the whole accordion area breathe */
+#apply_acf .acf-field-container{
+    padding-top: 6px;
+}
+
+/* =========================
+   Tabs (real tab look)
+   ========================= */
+#apply_acf .acf-ui-tabs{
+    border: 1px solid var(--ac-border);
+    border-radius: var(--ac-radius);
+    overflow: hidden;
+    background: var(--ac-bg);
+}
+
+/* Tab bar: hide ugly scrollbars */
+#apply_acf .acf-ui-tabs-nav{
+    display:flex;
+    gap: 6px;
+    padding: 10px 10px 0;
+    background: var(--ac-muted);
+    border-bottom: 1px solid var(--ac-border);
+    overflow-x: auto;
+    scrollbar-width: none;           /* Firefox */
+}
+#apply_acf .acf-ui-tabs-nav::-webkit-scrollbar{ display:none; } /* Chrome */
+
+/* Tab button: looks like real tab */
+#apply_acf .acf-ui-tab-btn{
+    appearance:none;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--ac-sub);
+    padding: 10px 14px;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    cursor:pointer;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    position: relative;
+    top: 1px; /* sit on the border line */
+    transition: all .12s ease;
+}
+
+#apply_acf .acf-ui-tab-btn:hover{
+    color: var(--ac-text);
+    background: rgba(255,255,255,.55);
+}
+
+/* Active: connected to panel */
+#apply_acf .acf-ui-tab-btn.is-active{
+    color: var(--ac-primary);
+    background: var(--ac-bg);
+    border-color: var(--ac-border);
+    border-bottom-color: var(--ac-bg);
+    box-shadow: 0 -1px 0 rgba(0,0,0,.02);
+}
+
+/* Panels */
+#apply_acf .acf-ui-tabs-panels{
+    padding: 14px;
+    background: var(--ac-bg);
+}
+
+#apply_acf .acf-ui-tab-panel{ display:none; }
+#apply_acf .acf-ui-tab-panel.is-active{ display:block; }
+
+/* =========================
+   Field buttons -> “chips”
+   ========================= */
+
+/* Give the panel a subtle layout rhythm */
+#apply_acf .acf-ui-tab-panel{
+    padding-bottom: 4px;
+}
+
+/* Chip */
+#apply_acf .field-button{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding: 8px 12px;
+    margin: 8px 8px 0 0;
+    border: 1px solid var(--ac-border);
+    background: var(--ac-bg);
+    color: var(--ac-text);
+    border-radius: 999px;
+    cursor:pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all .12s ease;
+    box-shadow: 0 1px 0 rgba(0,0,0,.02);
+}
+
+#apply_acf .field-button:hover{
+    border-color: rgba(34,113,177,.55);
+    background: rgba(34,113,177,.06);
+    color: var(--ac-primary);
+}
+
+#apply_acf .field-button:active{
+    transform: translateY(1px);
+}
+
+/* Optional: visually distinguish repeater buttons */
+#apply_acf .field-button.repeater-btn{
+    border-style: dashed;
+}
+
+/* =========================
+   Repeater blocks -> nested cards
+   ========================= */
+#apply_acf .repeater-field{
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid var(--ac-border);
+    border-radius: var(--ac-radius);
+    background: var(--ac-muted-2);
+}
+
+#apply_acf .repeater-field legend{
+    padding: 0 10px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--ac-text);
+}
+
+#apply_acf .repeater-subfields{
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e6e6e8;
+}
+
+/* Tabs inside repeater shown as divider */
+#apply_acf .acf-subtab-divider{
+    margin: 12px 0 6px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--ac-border);
+    background: #fff;
+    color: var(--ac-text);
+    font-weight: 800;
+    font-size: 13px;
+}
+#apply_acf .field-button,
+#apply_acf .acf-ui-tab-btn{
+    pointer-events: auto;
+    position: relative;
+    z-index: 5;
+}

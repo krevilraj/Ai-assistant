@@ -1171,6 +1171,7 @@ jQuery(document).ready(function ($) {
         correct_footer: handleCorrectFooter,
         correct_menu: handleCorrectMenu,
         create_custom_post_type: handleCreateCPT,
+        create_custom_post_type_page: handleCreateCPTPages,
         create_user_type: handleCreateUserType,
         remove_user_type: handleDeleteUserType,
         change__admin_page_link: handleAdminUrl,
@@ -1397,6 +1398,26 @@ jQuery(document).ready(function ($) {
             }
         });
     }
+
+    function handleCreateCPTPages(_this, $) {
+        const parentLi = _this.closest('li');
+
+        const cptSlug = parentLi.find('select[name="cpt_select"]').val();
+        const createSingle = parentLi.find('[name="cpt__template"]').is(':checked') ? 1 : 0;
+        const createArchive = parentLi.find('[name="cpt__archive_template"]').is(':checked') ? 1 : 0;
+        const noOfPosts = parentLi.find('[name="no_of_posts"]').val().trim() || 10;
+
+        if (!cptSlug) return showAlert("❌ Please select a CPT.", "danger");
+
+        sendAjax({
+            action: "create_custom_post_type_page",
+            cpt_slug: cptSlug,
+            create_template: createSingle,
+            create_archive_template: createArchive,
+            no_of_posts: noOfPosts
+        }, _this);
+    }
+
 
     function handleCreateUserType(_this, $) {
         const parentLi = _this.closest('li');
@@ -1691,9 +1712,114 @@ $wp_customize->add_control('${fieldSlug}', array(
 
 });
 
+jQuery(document).ready(function ($) {
 
+    // Tabs inside each ACF group (scoped)
+    $(document).on("click", ".acf-tab-btn", function () {
+        const $wrap = $(this).closest(".acf-tabs");
+        const tab = $(this).data("tab");
 
+        $wrap.find(".acf-tab-btn").removeClass("is-active");
+        $(this).addClass("is-active");
 
+        $wrap.find(".acf-tab-panel").removeClass("is-active");
+        $wrap.find(`.acf-tab-panel[data-panel="${tab}"]`).addClass("is-active");
+    });
+
+});
+
+jQuery(document).ready(function ($) {
+
+    // ===== Accordion (scoped) =====
+    $("#apply_acf #field-groups-accordion .accordion-content").hide();
+
+    $(document).on("click", "#apply_acf #field-groups-accordion .accordion-header", function (e) {
+        // ignore clicks on buttons/inputs inside header
+        if ($(e.target).closest("button, a, input, select, textarea, label").length) return;
+
+        const $item = $(this).closest(".accordion-item");
+        const $content = $item.children(".accordion-content");
+
+        // close others
+        $item.siblings(".accordion-item")
+            .removeClass("is-open")
+            .children(".accordion-content")
+            .stop(true, true).slideUp(160);
+
+        // toggle current
+        $item.toggleClass("is-open");
+        $content.stop(true, true).slideToggle(160);
+    });
+
+    // ===== Tabs (scoped) =====
+    $(document).on("click", "#apply_acf .acf-ui-tab-btn", function () {
+        const $wrap = $(this).closest(".acf-ui-tabs");
+        const tab = $(this).data("tab");
+
+        $wrap.find(".acf-ui-tab-btn").removeClass("is-active");
+        $(this).addClass("is-active");
+
+        $wrap.find(".acf-ui-tab-panel").removeClass("is-active");
+        $wrap.find('.acf-ui-tab-panel[data-panel="' + tab + '"]').addClass("is-active");
+    });
+
+});
+jQuery(document).ready(function ($) {
+
+    // Only prevent actual form submit (not button clicks)
+    $(document).on("submit", "#apply_acf form", function (e) {
+        e.preventDefault();
+        return false;
+    });
+
+});
+jQuery(document).ready(function ($) {
+
+    // ACF Apply buttons (works with your PHP output: data-name + data-type)
+    $(document).on("click", "#apply_acf .field-button", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const slug = (String($(this).data("name") || "")).trim();
+        const dtype = (String($(this).data("type") || "")).trim(); // repeater | subfield | normal
+
+        if (!slug) return;
+
+        // Use editor selection (your plugin already stores this)
+        const selected = (window.selectedText ? String(window.selectedText) : "").trim();
+
+        // ✅ REPEATER: wrap selection and replace selection in editor
+        if (dtype === "repeater") {
+            const phpRepeaterCode =
+                `<?php if (have_rows('${slug}')): $i = 0; ?>
+    <?php while (have_rows('${slug}')) : the_row(); ?>
+        ${selected}
+    <?php $i++; endwhile; ?>
+<?php endif; ?>`;
+
+            if (typeof replaceSelectedTextInEditor === "function") {
+                replaceSelectedTextInEditor(phpRepeaterCode, "Repeater wrapped! Press Ctrl + V to paste.");
+            }
+            return;
+        }
+
+        // ✅ SUBFIELD
+        if (dtype === "subfield") {
+            const phpSub = `<?php the_sub_field('${slug}'); ?>`;
+            if (typeof replaceSelectedTextInEditor === "function") {
+                replaceSelectedTextInEditor(phpSub, "Sub field copied! Press Ctrl + V to paste.");
+            }
+            return;
+        }
+
+        // ✅ NORMAL FIELD
+        const phpField = `<?php the_field('${slug}'); ?>`;
+        if (typeof replaceSelectedTextInEditor === "function") {
+            replaceSelectedTextInEditor(phpField, "Field copied! Press Ctrl + V to paste.");
+        }
+    });
+
+});
 
 
 

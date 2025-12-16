@@ -138,6 +138,53 @@
                 </div>
 
             </li>
+            <li>
+                <span class="open__child">Create CPT pages</span>
+                <div class="action__setting">
+                    <div>
+                        Choose CPT
+                        <select name="cpt_select">
+                            <option value="">Select CPT</option>
+                            <?php
+                            $post_types = get_post_types([
+                                'public'   => true,
+                                'show_ui'  => true,
+                                '_builtin' => false,
+                            ], 'objects');
+
+                            if (!empty($post_types)) {
+                                foreach ($post_types as $slug => $obj) {
+                                    printf(
+                                        '<option value="%s">%s (%s)</option>',
+                                        esc_attr($slug),
+                                        esc_html($obj->labels->name ?? $slug),
+                                        esc_html($slug)
+                                    );
+                                }
+                            }
+                            ?>
+                        </select>
+                    </div>
+
+
+
+
+
+                    <label>
+                        <input type="checkbox" name="cpt__template" checked> Create Single Page
+                    </label>
+                    <label>
+                        <input type="checkbox" name="cpt__archive_template" checked> Create Archive Page
+                    </label>
+
+                    <div class="d-flex no-of-posts">
+                        <p>No of Post in Archive</p>
+                        <input type="number" name="no_of_posts" placeholder="Post per page" min="1" value="1">
+                    </div>
+                    <?php ai_assistant_render_spark_button('create_custom_post_type_page'); ?>
+                </div>
+
+            </li>
 
         </ul>
     </div>
