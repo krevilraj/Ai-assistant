@@ -1,0 +1,341 @@
+.ai-theme-generator {
+    max-width: 980px;
+}
+
+.ai-theme-generator * {
+    box-sizing: border-box;
+}
+
+.ai-tg-subtitle {
+    margin: 6px 0 18px;
+    color: #555;
+    font-size: 13px;
+}
+
+.ai-tg-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ai-tg-card {
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    border-radius: 10px;
+    padding: 16px;
+}
+
+.ai-tg-card-title {
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111;
+}
+
+.ai-tg-radio-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.ai-tg-radio {
+    display: flex;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #e8e8e8;
+    border-radius: 10px;
+    cursor: pointer;
+    background: #fafafa;
+    align-items: flex-start;
+}
+
+.ai-tg-radio:hover {
+    border-color: #d8d8d8;
+    background: #f7f7f7;
+}
+
+.ai-tg-radio input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.ai-tg-radio-ui {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #bfbfbf;
+    margin-top: 2px;
+    position: relative;
+    flex: 0 0 18px;
+    background: #fff;
+}
+
+.ai-tg-radio input:checked + .ai-tg-radio-ui {
+    border-color: #2271b1;
+}
+
+.ai-tg-radio input:checked + .ai-tg-radio-ui::after {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2271b1;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.ai-tg-radio-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    line-height: 1.2;
+}
+
+.ai-tg-radio-text strong {
+    font-size: 13px;
+    color: #111;
+}
+
+.ai-tg-radio-text small {
+    font-size: 12px;
+    color: #666;
+}
+
+.ai-tg-new-theme-options {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed #e5e5e5;
+}
+
+/* UI-only: hidden by default; JS will toggle later */
+.ai-tg-new-theme-options[data-show-when="new"] {
+    display: none;
+}
+
+.ai-tg-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.ai-tg-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #222;
+}
+
+.ai-tg-field input {
+    width: 100%;
+    border: 1px solid #dcdcdc;
+    border-radius: 8px;
+    padding: 10px 10px;
+    font-size: 13px;
+    background: #fff;
+}
+
+.ai-tg-field input:focus {
+    outline: none;
+    border-color: #2271b1;
+    box-shadow: 0 0 0 2px rgba(34, 113, 177, 0.15);
+}
+
+.ai-tg-help {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: #777;
+}
+
+.ai-tg-upload input[type="file"] {
+    display: block;
+    width: 100%;
+    max-width: 520px;
+    margin: 4px 0 8px;
+}
+
+.ai-tg-check {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    cursor: pointer;
+    user-select: none;
+}
+
+.ai-tg-check input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.ai-tg-check-ui {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 2px solid #bfbfbf;
+    background: #fff;
+    position: relative;
+    flex: 0 0 18px;
+    margin-top: 1px;
+}
+
+.ai-tg-check input:checked + .ai-tg-check-ui {
+    border-color: #2271b1;
+    background: #2271b1;
+}
+
+.ai-tg-check input:checked + .ai-tg-check-ui::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 4px;
+    height: 9px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.ai-tg-check-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 13px;
+    color: #222;
+}
+
+.ai-tg-check-text small {
+    font-size: 12px;
+    color: #666;
+}
+
+.ai-tg-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.ai-tg-btn {
+    padding: 6px 14px !important;
+    border-radius: 8px !important;
+}
+
+.ai-tg-btn-secondary {
+    padding: 6px 14px !important;
+    border-radius: 8px !important;
+}
+
+.ai-tg-log-box {
+    background: #0f172a;
+    color: #e5e7eb;
+    border-radius: 10px;
+    padding: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.ai-tg-log-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+}
+
+.ai-muted {
+    opacity: 0.75;
+}
+
+.ai-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    flex: 0 0 8px;
+}
+
+@media (max-width: 900px) {
+    .ai-tg-radio-row {
+        grid-template-columns: 1fr;
+    }
+
+    .ai-tg-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.ai-tg-new-theme-options[data-show-when="new"] {
+    display: none;
+}
+.ai-field-error {
+    border-color: #d63638 !important;
+    box-shadow: 0 0 0 1px #d63638 !important;
+}
+
+.ai-field-error-msg {
+    margin-top: 6px;
+    color: #d63638;
+    font-size: 12px;
+    display: none;
+}
+
+.ai-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+
+.ai-table th,
+.ai-table td {
+    border: 1px solid #e5e7eb;
+    padding: 10px;
+    vertical-align: middle;
+}
+
+.ai-table th {
+    background: #f8fafc;
+    font-weight: 600;
+}
+
+.ai-page-title,
+.ai-page-slug {
+    width: 100%;
+    max-width: 360px;
+}
+
+/* simple switch */
+.ai-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 22px;
+}
+.ai-switch input { display:none; }
+.ai-switch-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: #cbd5e1;
+    border-radius: 999px;
+    transition: 0.2s;
+}
+.ai-switch-slider:before {
+    content: "";
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 2px;
+    top: 2px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.2s;
+}
+.ai-switch input:checked + .ai-switch-slider {
+    background: #22c55e;
+}
+.ai-switch input:checked + .ai-switch-slider:before {
+    transform: translateX(22px);
+}

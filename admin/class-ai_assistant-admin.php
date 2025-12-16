@@ -61,8 +61,7 @@ class AI_Assistant_Admin
      *
      * @since    1.0.0
      */
-    public function enqueue_styles()
-    {
+    public function enqueue_styles($hook = '') {
 
         /**
          * This function is provided for demonstration purposes only.
@@ -80,11 +79,28 @@ class AI_Assistant_Admin
         wp_enqueue_style($this->plugin_name . '-popup', plugin_dir_url(dirname(__FILE__)) . 'public/css/ai_assistant-popup.css', array(), $this->version, 'all');
 
         // ✅ Check if we're on the correct admin page
-        if (isset($_GET['page']) && $_GET['page'] === 'ai_assistant-theme-editor') {
-            wp_enqueue_style($this->plugin_name . 'dark-theme', plugin_dir_url(__FILE__) . 'css/darktheme.css', array(), $this->version, 'all');
-            wp_enqueue_style($this->plugin_name . 'coder_snippet', plugin_dir_url(__FILE__) . 'css/ai_assistant-snippet.css', array(), $this->version, 'all');
-            wp_enqueue_style('codemirror-foldgutter-css', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.css');
+        if ($hook === 'ai-assistant_page_ai_assistant-theme-editor') {
+            wp_enqueue_style($this->plugin_name . '-dark-theme', plugin_dir_url(__FILE__) . 'css/darktheme.css', array(), $this->version, 'all');
+            wp_enqueue_style($this->plugin_name . '-coder-snippet', plugin_dir_url(__FILE__) . 'css/ai_assistant-snippet.css', array(), $this->version, 'all');
+            wp_enqueue_style('codemirror-foldgutter-css', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.css', array(), null);
         }
+
+        // ✅ Create Theme page only
+        if (strpos($hook, 'ai-assistant-new-theme') !== false) {
+            wp_enqueue_style(
+                $this->plugin_name . '-create-theme',
+                plugin_dir_url(__FILE__) . 'css/create-theme.css',
+                array(),
+                $this->version,
+                'all'
+            );
+        }
+
+
+
+
+        error_log('AI Assistant admin hook: ' . $hook);
+
 
     }
 
@@ -93,7 +109,7 @@ class AI_Assistant_Admin
      *
      * @since    1.0.0
      */
-    public function enqueue_scripts() {
+    public function enqueue_scripts($hook = '') {
 
         // === Enqueue base scripts ===
         wp_enqueue_script(
@@ -177,36 +193,26 @@ class AI_Assistant_Admin
             'jQuery(document).ready(function($) { aiAssistantInitEditor(); });'
         );
 
-        if (isset($_GET['page']) && $_GET['page'] === 'ai_assistant-theme-editor') {
+        if ($hook === 'ai-assistant_page_ai_assistant-theme-editor') {
+            wp_enqueue_script('codemirror-foldcode', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldcode.min.js', array('wp-codemirror'), null, true);
+            wp_enqueue_script('codemirror-foldgutter', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.js', array('wp-codemirror'), null, true);
+            wp_enqueue_script('codemirror-brace-fold', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/brace-fold.min.js', array('wp-codemirror'), null, true);
+            wp_enqueue_script('codemirror-comment-fold', 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/comment-fold.min.js', array('wp-codemirror'), null, true);
+        }
+
+        // ✅ Create Theme page only (JS)
+        if (strpos($hook, 'ai-assistant-new-theme') !== false) {
             wp_enqueue_script(
-                'codemirror-foldcode',
-                'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldcode.min.js',
-                array('wp-codemirror'),
-                null,
-                true
-            );
-            wp_enqueue_script(
-                'codemirror-foldgutter',
-                'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/foldgutter.min.js',
-                array('wp-codemirror'),
-                null,
-                true
-            );
-            wp_enqueue_script(
-                'codemirror-brace-fold',
-                'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/brace-fold.min.js',
-                array('wp-codemirror'),
-                null,
-                true
-            );
-            wp_enqueue_script(
-                'codemirror-comment-fold',
-                'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/fold/comment-fold.min.js',
-                array('wp-codemirror'),
-                null,
-                true
+                $this->plugin_name . '-create-theme',
+                plugin_dir_url(__FILE__) . 'js/create-theme.js',
+                array('jquery'),
+                $this->version,
+                true // ✅ load in footer (important)
             );
         }
+
+
+
     }
 
 
@@ -242,6 +248,15 @@ class AI_Assistant_Admin
             'manage_options',
             'ai_assistant-live-css-editor',
             [$this, 'display_live_css_editor_page']
+        );
+
+        add_submenu_page(
+            'ai_assistant-settings',          // Parent slug (your main menu slug)
+            __('New Theme', 'ai_assistant'),   // Page title
+            __('New Theme', 'ai_assistant'),   // Menu title
+            'manage_options',                 // Capability
+            'ai-assistant-new-theme',          // Submenu slug
+            [$this, 'ai_assistant_new_theme_page']      // Callback
         );
     }
 
@@ -384,6 +399,16 @@ class AI_Assistant_Admin
         <?php
     }
 
+    // create new theme function for admin
+    public function ai_assistant_new_theme_page(){
+        $file = plugin_dir_path(__FILE__) . 'pages/create_theme.php';
+
+        if (file_exists($file)) {
+            require $file;
+        } else {
+            echo '<div class="wrap"><h1>New Theme</h1><p>Page file not found.</p></div>';
+        }
+    }
 
     //add link that opens a popup from the adminbar
     public function add_custom_field_link_to_admin_bar($wp_admin_bar)
