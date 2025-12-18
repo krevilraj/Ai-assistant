@@ -123,6 +123,11 @@ class AI_Assistant
         add_action( 'admin_head', [ $this, 'ai_assistant_imp_style' ] );
 
 
+        // create new theme
+        add_action('admin_post_ai_tg_upload_zip', [$this, 'handle_theme_zip_upload']);
+        add_action('admin_post_ai_tg_create_pages', [$this, 'handle_create_pages']);
+
+
 
 
 
@@ -2212,6 +2217,212 @@ PHP;
             <?php
         }
 
+    }
+
+
+    /**
+     * STEP 1: Upload ZIP -> Extract -> Detect root pages -> Save to transient -> Redirect back with tg_session
+     */
+    public function handle_theme_zip_upload() {
+        if ( ! current_user_can('manage_options') ) {
+            wp_die( esc_html__( 'Unauthorized.', 'ai_assistant' ) );
+        }
+
+        check_admin_referer('ai_tg_upload_zip_nonce');
+
+        if ( empty($_FILES['ai_tg_zip']) || empty($_FILES['ai_tg_zip']['name']) ) {
+            wp_safe_redirect( add_query_arg(['tg_error' => 'no_zip'], wp_get_referer()) );
+            exit;
+        }
+
+        $file = $_FILES['ai_tg_zip'];
+
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if ($ext !== 'zip') {
+            wp_safe_redirect( add_query_arg(['tg_error' => 'not_zip'], wp_get_referer()) );
+            exit;
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/misc.php';
+        require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+
+        $uploads = wp_upload_dir();
+        if ( empty($uploads['basedir']) ) {
+            wp_safe_redirect( add_query_arg(['tg_error' => 'upload_dir'], wp_get_referer()) );
+            exit;
+        }
+
+        $session_id = wp_generate_uuid4();
+
+        $base_dir   = trailingslashit($uploads['basedir']) . 'ai-theme-generator/' . $session_id . '/';
+        $zip_path   = $base_dir . 'source.zip';
+        $extract_dir= $base_dir . 'extracted/';
+
+        wp_mkdir_p($base_dir);
+        wp_mkdir_p($extract_dir);
+
+        // Move uploaded ZIP
+        if ( ! @move_uploaded_file($file['tmp_name'], $zip_path) ) {
+            wp_safe_redirect( add_query_arg(['tg_error' => 'move_failed'], wp_get_referer()) );
+            exit;
+        }
+
+        // Extract
+        $unzipped = unzip_file($zip_path, $extract_dir);
+        if ( is_wp_error($unzipped) ) {
+            wp_safe_redirect( add_query_arg(['tg_error' => 'unzip_failed'], wp_get_referer()) );
+            exit;
+        }
+
+        // Detect root pages
+        $detected_pages = $this->detect_root_pages($extract_dir);
+
+        // Store for Phase 2 create step
+        set_transient('ai_tg_session_' . $session_id, [
+            'session_id'      => $session_id,
+            'extract_dir'     => $extract_dir,
+            'detected_pages'  => $detected_pages,
+            'created_at'      => time(),
+        ], HOUR_IN_SECONDS);
+
+        // Redirect back to the page (same admin page) with session id
+        $back = wp_get_referer();
+        $back = remove_query_arg(['tg_error'], $back);
+        wp_safe_redirect( add_query_arg(['tg_session' => $session_id, 'tg_step' => 'review'], $back) );
+        exit;
+    }
+
+    /**
+     * STEP 2: Create WP pages (draft) from detected pages + renamed titles
+     */
+    public function handle_create_pages() {
+        if ( ! current_user_can('manage_options') ) {
+            wp_die( esc_html__( 'Unauthorized.', 'ai_assistant' ) );
+        }
+
+        check_admin_referer('ai_tg_create_pages_nonce');
+
+        $session_id = isset($_POST['tg_session']) ? sanitize_text_field($_POST['tg_session']) : '';
+        if ( empty($session_id) ) {
+            wp_safe_redirect( add_query_arg(['tg_error' => 'missing_session'], wp_get_referer()) );
+            exit;
+        }
+
+        $session = get_transient('ai_tg_session_' . $session_id);
+        if ( empty($session) || empty($session['detected_pages']) || empty($session['extract_dir']) ) {
+            wp_safe_redirect( add_query_arg(['tg_error' => 'session_expired'], wp_get_referer()) );
+            exit;
+        }
+
+        $detected_pages = $session['detected_pages'];
+        $extract_dir    = $session['extract_dir'];
+
+        $submitted_pages = isset($_POST['pages']) && is_array($_POST['pages']) ? $_POST['pages'] : [];
+        $include         = isset($_POST['include']) && is_array($_POST['include']) ? $_POST['include'] : [];
+
+        $created = 0;
+        $updated = 0;
+
+        foreach ($detected_pages as $i => $p) {
+            $file = $p['file'];
+            $slug = $p['slug'];
+
+            // Only if checked
+            if ( empty($include[$i]) ) {
+                continue;
+            }
+
+            $title = $p['title'];
+            if ( isset($submitted_pages[$i]['title']) ) {
+                $title = sanitize_text_field($submitted_pages[$i]['title']);
+            }
+            if ( $title === '' ) {
+                $title = $p['title'];
+            }
+
+            // Find existing page by slug
+            $existing = get_page_by_path($slug, OBJECT, 'page');
+
+            $content = "<!-- AI Theme Generator Source: {$file} (session: {$session_id}) -->\n";
+
+            if ( $existing && $existing instanceof WP_Post ) {
+                wp_update_post([
+                    'ID'         => $existing->ID,
+                    'post_title' => $title,
+                ]);
+                update_post_meta($existing->ID, '_ai_tg_source_file', $file);
+                update_post_meta($existing->ID, '_ai_tg_session', $session_id);
+                $updated++;
+            } else {
+                $new_id = wp_insert_post([
+                    'post_type'   => 'page',
+                    'post_status' => 'draft', // keep safe
+                    'post_title'  => $title,
+                    'post_name'   => $slug,
+                    'post_content'=> $content,
+                ]);
+
+                if ( ! is_wp_error($new_id) && $new_id ) {
+                    update_post_meta($new_id, '_ai_tg_source_file', $file);
+                    update_post_meta($new_id, '_ai_tg_session', $session_id);
+                    $created++;
+                }
+            }
+        }
+
+        // Keep session for Phase 3, but you can expire it later if you want
+        $back = wp_get_referer();
+        $back = remove_query_arg(['tg_error'], $back);
+
+        wp_safe_redirect( add_query_arg([
+            'tg_session' => $session_id,
+            'tg_step'    => 'done',
+            'created'    => $created,
+            'updated'    => $updated,
+        ], $back) );
+        exit;
+    }
+
+    /**
+     * Root-level page detection: only files directly in extracted root (no folders)
+     */
+    private function detect_root_pages($extract_dir) {
+        $detected_pages = [];
+
+        if ( ! is_dir($extract_dir) ) {
+            return $detected_pages;
+        }
+
+        $files = scandir($extract_dir);
+        if ( ! is_array($files) ) {
+            return $detected_pages;
+        }
+
+        foreach ($files as $file) {
+            if ($file === '.' || $file === '..') continue;
+
+            $full = $extract_dir . $file;
+
+            if (!is_file($full)) continue;
+
+            $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+            if ( ! in_array($ext, ['html', 'php'], true) ) continue;
+            if ( str_starts_with($file, '_') ) continue;
+
+            $slug = sanitize_title(pathinfo($file, PATHINFO_FILENAME));
+
+            // You can choose to skip index.php here if you want:
+            // if ($file === 'index.php') continue;
+
+            $detected_pages[] = [
+                'file'  => $file,
+                'slug'  => $slug,
+                'title' => ucwords(str_replace('-', ' ', $slug)),
+            ];
+        }
+
+        return $detected_pages;
     }
 
 
