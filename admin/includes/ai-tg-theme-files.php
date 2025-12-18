@@ -1,6 +1,44 @@
 <?php
 if ( ! defined('ABSPATH') ) exit;
 
+function ai_tg_fix_page_links_by_map($html, $map = []) {
+    if (empty($map) || !is_array($map)) return (string)$html;
+
+    return preg_replace_callback(
+        '/<a\b([^>]*?)\bhref=(["\'])([^"\']*)\2([^>]*)>/i',
+        function ($m) use ($map) {
+            $before = $m[1];
+            $href   = trim((string)$m[3]);
+            $after  = $m[4];
+
+            // skip external links, #, mailto, tel, etc.
+            if ($href === '' || ai_tg_should_skip_url($href)) return $m[0];
+
+            // normalize href for matching
+            $h = strtolower($href);
+            $h = preg_replace('~\?.*$~', '', $h);
+            $h = preg_replace('~#.*$~', '', $h);
+            $h = preg_replace('~^\./~', '', $h);
+            $h = ltrim($h, '/');
+
+            $h_no_ext = preg_replace('/\.[^.]+$/', '', $h);
+
+            // try match
+            $slug = '';
+            if (isset($map[$h])) $slug = $map[$h];
+            elseif (isset($map[$h_no_ext])) $slug = $map[$h_no_ext];
+
+            if ($slug) {
+                return '<a' . $before . 'href="<?php echo esc_url( home_url("/' . esc_attr($slug) . '/") ); ?>"' . $after . '>';
+            }
+
+            return $m[0];
+        },
+        (string)$html
+    );
+}
+
+
 if ( ! function_exists('ai_tg_should_skip_url') ) {
     function ai_tg_should_skip_url($url) {
         return (bool) preg_match('~^(?:https?:)?//|data:|mailto:|tel:|#~i', trim((string)$url));
@@ -139,33 +177,45 @@ if ( ! function_exists('ai_tg_collect_assets_from_html') ) {
         $css = [];
         $js  = [];
 
-        // CSS
-        if (preg_match_all('#<link\b[^>]*rel=["\']stylesheet["\'][^>]*href=["\']([^"\']+)["\']#is', $html, $m)) {
-            foreach ($m[1] as $href) {
-                $href = trim($href);
-                if (!ai_tg_is_enqueueable_url($href)) continue;
+        // Extract ALL <link> tags first
+        preg_match_all('#<link[^>]*>#is', $html, $all_links);
 
-                // normalize only if it's NOT external
-                if (!preg_match('~^(?:https?:)?//~i', $href)) {
-                    $href = ai_tg_normalize_rel_path($href);
-                }
+        foreach ($all_links[0] as $link_tag) {
+            // Check if it's a stylesheet
+            if (stripos($link_tag, 'stylesheet') === false) continue;
 
-                $css[] = $href;
+            // Extract href
+            if (!preg_match('#href=["\']([^"\']+)["\']#i', $link_tag, $href_match)) continue;
+
+            $href = trim($href_match[1]);
+            if ($href === '') continue;
+
+            // Skip truly non-enqueueable
+            if (preg_match('~^(?:data:|mailto:|tel:|javascript:|#)~i', $href)) continue;
+
+            // External or internal?
+            if (preg_match('~^(?:https?:)?//~i', $href)) {
+                $css[] = $href; // External - keep as-is
+            } else {
+                $css[] = ai_tg_normalize_rel_path($href); // Internal - normalize
             }
         }
 
-        // JS
-        if (preg_match_all('#<script\b[^>]*\bsrc=["\']([^"\']+)["\']#is', $html, $m2)) {
-            foreach ($m2[1] as $src) {
-                $src = trim($src);
-                if (!ai_tg_is_enqueueable_url($src)) continue;
+        // Extract ALL <script> tags with src
+        preg_match_all('#<script[^>]*\bsrc=["\']([^"\']+)["\'][^>]*>#is', $html, $all_scripts);
 
-                // normalize only if it's NOT external
-                if (!preg_match('~^(?:https?:)?//~i', $src)) {
-                    $src = ai_tg_normalize_rel_path($src);
-                }
+        foreach ($all_scripts[1] as $src) {
+            $src = trim($src);
+            if ($src === '') continue;
 
-                $js[] = $src;
+            // Skip truly non-enqueueable
+            if (preg_match('~^(?:data:|mailto:|tel:|javascript:|#)~i', $src)) continue;
+
+            // External or internal?
+            if (preg_match('~^(?:https?:)?//~i', $src)) {
+                $js[] = $src; // External - keep as-is
+            } else {
+                $js[] = ai_tg_normalize_rel_path($src); // Internal - normalize
             }
         }
 
@@ -174,7 +224,6 @@ if ( ! function_exists('ai_tg_collect_assets_from_html') ) {
             'js'  => array_values(array_unique($js)),
         ];
     }
-
 }
 
 /**
@@ -208,21 +257,37 @@ if ( ! function_exists('ai_tg_extract_zip_to_theme_root') ) {
             if (is_dir($one)) $root_to_copy = trailingslashit($one);
         }
 
-        $it = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($root_to_copy, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
+        // Copy ONLY root-level folders into theme (merge), ignore root-level files
+        $root_items = array_values(array_diff(scandir($root_to_copy), ['.','..']));
 
-        foreach ($it as $f) {
-            $src = $f->getPathname();
-            $rel = ltrim(str_replace($root_to_copy, '', $src), '/\\');
-            $dst = trailingslashit($theme_dir) . $rel;
+        foreach ($root_items as $item) {
+            $src_path = trailingslashit($root_to_copy) . $item;
 
-            if ($f->isDir()) {
-                if (!file_exists($dst)) wp_mkdir_p($dst);
-            } else {
-                if (!file_exists(dirname($dst))) wp_mkdir_p(dirname($dst));
-                @copy($src, $dst);
+            if (!is_dir($src_path)) {
+                continue; // ignore root-level files
+            }
+
+            $dst_path = trailingslashit($theme_dir) . $item;
+            if (!file_exists($dst_path)) {
+                wp_mkdir_p($dst_path);
+            }
+
+            $it = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($src_path, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::SELF_FIRST
+            );
+
+            foreach ($it as $f) {
+                $src = $f->getPathname();
+                $rel = ltrim(str_replace($src_path, '', $src), '/\\');
+                $dst = trailingslashit($dst_path) . $rel;
+
+                if ($f->isDir()) {
+                    if (!file_exists($dst)) wp_mkdir_p($dst);
+                } else {
+                    if (!file_exists(dirname($dst))) wp_mkdir_p(dirname($dst));
+                    @copy($src, $dst);
+                }
             }
         }
 
@@ -334,11 +399,15 @@ if ( ! function_exists('ai_tg_write_enqueues_into_functions_php') ) {
             if ($href === '') continue;
 
             $handle = "ai-tg-style-{$i}";
+
+            // Check if it's an external URL (http://, https://, or //)
             if (preg_match('~^(?:https?:)?//~i', $href)) {
+                // External URL - use directly with proper escaping
                 $lines[] = "    wp_enqueue_style('{$handle}', '" . esc_url_raw($href) . "', [], null);";
             } else {
+                // Internal path - use theme directory
                 $href = ltrim($href, '/');
-                $lines[] = "    wp_enqueue_style('{$handle}', get_stylesheet_directory_uri() . '/" . esc_js($href) . "', [], null);";
+                $lines[] = "    wp_enqueue_style('{$handle}', get_stylesheet_directory_uri() . '/" . addslashes($href) . "', [], null);";
             }
             $i++;
         }
@@ -349,15 +418,18 @@ if ( ! function_exists('ai_tg_write_enqueues_into_functions_php') ) {
             if ($src === '') continue;
 
             $handle = "ai-tg-script-{$j}";
+
+            // Check if it's an external URL (http://, https://, or //)
             if (preg_match('~^(?:https?:)?//~i', $src)) {
+                // External URL - use directly with proper escaping
                 $lines[] = "    wp_enqueue_script('{$handle}', '" . esc_url_raw($src) . "', ['jquery'], null, true);";
             } else {
+                // Internal path - use theme directory
                 $src = ltrim($src, '/');
-                $lines[] = "    wp_enqueue_script('{$handle}', get_stylesheet_directory_uri() . '/" . esc_js($src) . "', ['jquery'], null, true);";
+                $lines[] = "    wp_enqueue_script('{$handle}', get_stylesheet_directory_uri() . '/" . addslashes($src) . "', ['jquery'], null, true);";
             }
             $j++;
         }
-
 
         $lines[] = "});";
         $lines[] = $block_end;
@@ -497,7 +569,7 @@ if ( ! function_exists('ai_tg_create_wp_pages_with_templates') ) {
 }
 
 
-function ai_tg_build_header_footer_from_zip($zip_path, $theme_dir, &$all_css = [], &$all_js = [], &$err = '') {
+function ai_tg_build_header_footer_from_zip($zip_path, $theme_dir, &$all_css = [], &$all_js = [], $page_link_map = [], &$err = '') {
     $err = '';
 
     // 1) Read header/footer from ZIP by basename
@@ -525,7 +597,16 @@ function ai_tg_build_header_footer_from_zip($zip_path, $theme_dir, &$all_css = [
 
         // Correct URLs then strip tags
         $header = ai_tg_correct_html_to_php($zip_header);
-        $header = ai_tg_strip_css_js_tags($header);
+        $header = ai_tg_fix_page_links_by_map($header, $page_link_map);
+
+        // Force dynamic language attributes on <html>
+        $header = preg_replace(
+            '#<html\b[^>]*>#i',
+            '<html <?php language_attributes(); ?>>',
+            $header,
+            1
+        );
+
 
         // Ensure wp_head before </head>
         if (stripos($header, 'wp_head') === false) {
@@ -556,9 +637,10 @@ function ai_tg_build_header_footer_from_zip($zip_path, $theme_dir, &$all_css = [
         $all_css = array_merge($all_css, $a2['css']);
         $all_js  = array_merge($all_js,  $a2['js']);
 
-        // Correct URLs then strip tags
+        // Correct URLs + strip assets (already handled internally)
         $footer = ai_tg_correct_html_to_php($zip_footer);
-        $footer = ai_tg_strip_css_js_tags($footer);
+        $footer = ai_tg_fix_page_links_by_map($footer, $page_link_map);
+
 
         // Ensure wp_footer exists (prefer before </body>)
         if (stripos($footer, 'wp_footer') === false) {

@@ -130,12 +130,35 @@ function ai_tg_fix_inline_style_urls($html) {
     );
 }
 
-function ai_tg_strip_css_js_tags($html) {
-    $html = (string)$html;
-    $html = preg_replace('#<link\b[^>]*rel=["\']stylesheet["\'][^>]*>\s*#is', '', $html);
-    $html = preg_replace('#<script\b[^>]*\bsrc=["\'][^"\']+["\'][^>]*>\s*</script>\s*#is', '', $html);
-    return $html;
+if ( ! function_exists('ai_tg_strip_css_js_tags') ) {
+    function ai_tg_strip_css_js_tags($html) {
+        $html = (string) $html;
+
+        // 1) Remove ANY <link ... href="*.css"> (stylesheet, preload-as-style, etc.)
+        $html = preg_replace(
+            '#<link\b[^>]*\bhref=["\'][^"\']+\.css(?:\?[^"\']*)?["\'][^>]*>\s*#is',
+            '',
+            $html
+        );
+
+        // 2) Remove ANY <script ... src="..."></script> (incl. module/defer/async)
+        $html = preg_replace(
+            '#<script\b[^>]*\bsrc=["\'][^"\']+["\'][^>]*>\s*</script>\s*#is',
+            '',
+            $html
+        );
+
+        // 3) Safety: remove rare self-closed script tags (just in case)
+        $html = preg_replace(
+            '#<script\b[^>]*\bsrc=["\'][^"\']+["\'][^>]*/>\s*#is',
+            '',
+            $html
+        );
+
+        return $html;
+    }
 }
+
 
 function ai_tg_correct_html_to_php($html) {
     $html = (string)$html;
@@ -146,33 +169,47 @@ function ai_tg_correct_html_to_php($html) {
     return $html;
 }
 
-function ai_tg_collect_assets_from_html($html) {
-    $html = (string)$html;
-    $css = [];
-    $js  = [];
+if ( ! function_exists('ai_tg_collect_assets_from_html') ) {
+    function ai_tg_collect_assets_from_html($html) {
+        error_log('COLLECTING ASSETS - Function called');
+        $html = (string)$html;
+        $css = [];
+        $js  = [];
 
-    if (preg_match_all('#<link\b[^>]*rel=["\']stylesheet["\'][^>]*href=["\']([^"\']+)["\']#is', $html, $m)) {
-        foreach ($m[1] as $href) {
-            $href = trim($href);
-            if ($href === '') continue;
-            if (ai_tg_should_skip_url($href)) continue;
-            $css[] = ai_tg_normalize_rel_path($href);
+        preg_match_all('#<link[^>]*>#is', $html, $all_links);
+        error_log('Found ' . count($all_links[0]) . ' link tags total');
+
+        foreach ($all_links[0] as $link_tag) {
+            if (stripos($link_tag, 'stylesheet') === false) continue;
+            if (!preg_match('#href=["\']([^"\']+)["\']#i', $link_tag, $href_match)) continue;
+
+            $href = trim($href_match[1]);
+            if ($href === '' || preg_match('~^(?:data:|mailto:|tel:|javascript:|#)~i', $href)) continue;
+
+            if (preg_match('~^(?:https?:)?//~i', $href)) {
+                $css[] = $href;
+                error_log('EXTERNAL CSS: ' . $href);
+            } else {
+                $css[] = ai_tg_normalize_rel_path($href);
+                error_log('INTERNAL CSS: ' . $href);
+            }
         }
-    }
 
-    if (preg_match_all('#<script\b[^>]*\bsrc=["\']([^"\']+)["\']#is', $html, $m2)) {
-        foreach ($m2[1] as $src) {
+        preg_match_all('#<script[^>]*\bsrc=["\']([^"\']+)["\'][^>]*>#is', $html, $all_scripts);
+
+        foreach ($all_scripts[1] as $src) {
             $src = trim($src);
-            if ($src === '') continue;
-            if (ai_tg_should_skip_url($src)) continue;
-            $js[] = ai_tg_normalize_rel_path($src);
-        }
-    }
+            if ($src === '' || preg_match('~^(?:data:|mailto:|tel:|javascript:|#)~i', $src)) continue;
 
-    return [
-        'css' => array_values(array_unique($css)),
-        'js'  => array_values(array_unique($js)),
-    ];
+            if (preg_match('~^(?:https?:)?//~i', $src)) {
+                $js[] = $src;
+            } else {
+                $js[] = ai_tg_normalize_rel_path($src);
+            }
+        }
+
+        return ['css' => array_values(array_unique($css)), 'js' => array_values(array_unique($js))];
+    }
 }
 
 /**
@@ -429,16 +466,15 @@ if ($is_submitted) {
         }
 
         /**
-         * Phase 4 order (CORRECT):
-         * 1) Extract ZIP
-         * 2) Collect header/footer assets RAW (BEFORE strip)
-         * 3) Ensure header/footer corrected + wp_head/wp_footer (strips tags)
-         * 4) Collect assets from selected pages (from ZIP originals)
-         * 5) Write enqueues
-         * 6) Create pages + templates
+         * Phase 4 order (CORRECTED):
+         * 1) Extract ZIP to theme root
+         * 2) Collect ALL assets from ZIP originals (header/footer/pages) BEFORE any modification
+         * 3) Correct header/footer (strip tags, add wp_head/wp_footer)
+         * 4) Write enqueues to functions.php
+         * 5) Create page templates
          */
 
-        // 1) Extract ZIP to theme root
+// 1) Extract ZIP to theme root
         if (empty($errors)) {
             $extract_err = '';
             if (!ai_tg_extract_zip_to_theme_root($zip_saved_path, $theme_dir, $extract_err)) {
@@ -446,74 +482,148 @@ if ($is_submitted) {
             }
         }
 
-        // Prepare paths once
-        $header_path = trailingslashit($theme_dir) . 'header.php';
-        $footer_path = trailingslashit($theme_dir) . 'footer.php';
-
-        // 2) Collect assets from header/footer BEFORE they get stripped
         $all_css = [];
         $all_js  = [];
 
+// 2) Collect ALL assets from ZIP originals (BEFORE any file modifications)
         if (empty($errors)) {
 
-            if (file_exists($header_path)) {
-                $h_raw = file_get_contents($header_path);
-                if ($h_raw !== false) {
-                    $a = ai_tg_collect_assets_from_html($h_raw);
-                    $all_css = array_merge($all_css, $a['css']);
-                    $all_js  = array_merge($all_js,  $a['js']);
-                }
+            error_log('=== ASSET COLLECTION DEBUG START ===');
+            error_log('ZIP path: ' . $zip_saved_path);
+            error_log('ZIP exists: ' . (file_exists($zip_saved_path) ? 'YES' : 'NO'));
+
+            // 2a) Collect from header.php/header.html in ZIP
+            $zip_err = '';
+            $zip_header = ai_tg_get_zip_file_content($zip_saved_path, 'header.php', $zip_err);
+
+            error_log('Looking for header.php...');
+            error_log('Zip error: ' . $zip_err);
+            error_log('Header content length: ' . strlen($zip_header));
+
+            if ($zip_err || $zip_header === '') {
+                error_log('header.php not found or empty, trying header.html...');
+                $zip_err = '';
+                $zip_header = ai_tg_get_zip_file_content($zip_saved_path, 'header.html', $zip_err);
+                error_log('header.html zip error: ' . $zip_err);
+                error_log('header.html content length: ' . strlen($zip_header));
             }
 
-            if (file_exists($footer_path)) {
-                $f_raw = file_get_contents($footer_path);
-                if ($f_raw !== false) {
-                    $a = ai_tg_collect_assets_from_html($f_raw);
-                    $all_css = array_merge($all_css, $a['css']);
-                    $all_js  = array_merge($all_js,  $a['js']);
-                }
+            if ($zip_header !== '') {
+                error_log('Header found! First 200 chars:');
+                error_log(substr($zip_header, 0, 200));
+
+                $a = ai_tg_collect_assets_from_html($zip_header);
+                error_log('Assets collected from header:');
+                error_log('CSS count: ' . count($a['css']));
+                error_log('CSS: ' . print_r($a['css'], true));
+                error_log('JS count: ' . count($a['js']));
+                error_log('JS: ' . print_r($a['js'], true));
+
+                $all_css = array_merge($all_css, $a['css']);
+                $all_js  = array_merge($all_js,  $a['js']);
+            } else {
+                error_log('NO HEADER FOUND IN ZIP!');
             }
-        }
 
-        // 3) Ensure header/footer corrected + wp_head/wp_footer (this strips tags, OK now)
-        // Build header/footer from ZIP originals (overwrite placeholders) + collect assets
-        if (empty($errors)) {
-            $hf_zip_err = '';
-            if (!ai_tg_build_header_footer_from_zip($zip_saved_path, $theme_dir, $all_css, $all_js, $hf_zip_err)) {
-                $errors[] = $hf_zip_err ?: 'Failed building header/footer from ZIP.';
+            // 2b) Collect from footer.php/footer.html in ZIP
+            $zip_err2 = '';
+            $zip_footer = ai_tg_get_zip_file_content($zip_saved_path, 'footer.php', $zip_err2);
+
+            error_log('Looking for footer.php...');
+            error_log('Zip error: ' . $zip_err2);
+
+            if ($zip_err2 || $zip_footer === '') {
+                error_log('footer.php not found or empty, trying footer.html...');
+                $zip_err2 = '';
+                $zip_footer = ai_tg_get_zip_file_content($zip_saved_path, 'footer.html', $zip_err2);
+                error_log('footer.html zip error: ' . $zip_err2);
             }
-        }
 
-        // 4) Collect assets from selected pages (read ORIGINAL html/php from ZIP, not theme files)
-        if (empty($errors)) {
+            if ($zip_footer !== '') {
+                error_log('Footer found!');
+                $a2 = ai_tg_collect_assets_from_html($zip_footer);
+                error_log('Assets from footer - CSS: ' . count($a2['css']) . ', JS: ' . count($a2['js']));
+                $all_css = array_merge($all_css, $a2['css']);
+                $all_js  = array_merge($all_js,  $a2['js']);
+            } else {
+                error_log('NO FOOTER FOUND IN ZIP!');
+            }
 
+            // 2c) Collect from selected pages
+            error_log('Collecting from pages...');
             foreach ($clean as $r) {
                 if (empty($r['create']) || (string)$r['create'] !== '1') continue;
 
                 $source_basename = basename($r['path']);
-                $zip_err = '';
-                $html = ai_tg_get_zip_file_content($zip_saved_path, $source_basename, $zip_err);
-                if ($zip_err || $html === '') continue;
+                error_log('Looking for page: ' . $source_basename);
+
+                $zip_err3 = '';
+                $html = ai_tg_get_zip_file_content($zip_saved_path, $source_basename, $zip_err3);
+
+                if ($zip_err3 || $html === '') {
+                    error_log('Page not found or error: ' . $zip_err3);
+                    continue;
+                }
 
                 $assets = ai_tg_collect_assets_from_html($html);
+                error_log('Page assets - CSS: ' . count($assets['css']) . ', JS: ' . count($assets['js']));
                 $all_css = array_merge($all_css, $assets['css']);
                 $all_js  = array_merge($all_js,  $assets['js']);
             }
 
-            // clean up duplicates
+            // Remove duplicates
             $all_css = array_values(array_unique(array_filter($all_css)));
             $all_js  = array_values(array_unique(array_filter($all_js)));
 
-            // 5) Write enqueues into functions.php
+            error_log('=== FINAL TOTALS ===');
+            error_log('Total unique CSS: ' . count($all_css));
+            error_log('All CSS: ' . print_r($all_css, true));
+            error_log('Total unique JS: ' . count($all_js));
+            error_log('All JS: ' . print_r($all_js, true));
+            error_log('=== ASSET COLLECTION DEBUG END ===');
+        }
+
+        // Build map: "sobre-nos.php" => "sobre-nos" (slug from table)
+        $page_link_map = [];
+        foreach ($clean as $r) {
+            $path = isset($r['path']) ? basename($r['path']) : '';
+            $slug = isset($r['slug']) ? sanitize_title($r['slug']) : '';
+            if (!$path || !$slug) continue;
+
+            $base_no_ext = preg_replace('/\.[^.]+$/', '', $path);
+
+            $page_link_map[strtolower($path)] = $slug;        // sobre-nos.php
+            $page_link_map[strtolower($base_no_ext)] = $slug; // sobre-nos
+        }
+
+
+// 3) Build header/footer from ZIP (ONCE)
+        if (empty($errors)) {
+            $hf_err = '';
+            if (!ai_tg_build_header_footer_from_zip(
+                $zip_saved_path,
+                $theme_dir,
+                $all_css,
+                $all_js,
+                $page_link_map,
+                $hf_err
+            )) {
+
+                $errors[] = $hf_err ?: 'Failed generating header/footer from ZIP.';
+            }
+        }
+
+
+// 4) Write enqueues to functions.php
+        if (empty($errors)) {
             $fn_err = '';
             if (!ai_tg_write_enqueues_into_functions_php($theme_dir, $all_css, $all_js, $fn_err)) {
                 $errors[] = $fn_err ?: 'Failed writing enqueues to functions.php';
             }
         }
 
-        // 6) Create pages + templates
+// 5) Create pages + templates
         if (empty($errors)) {
-
             [$created, $create_errors] = ai_tg_create_wp_pages_with_templates(
                 $clean,
                 $page_status,
@@ -535,6 +645,8 @@ if ($is_submitted) {
                 $errors[] = $e;
             }
         }
+
+
     }
 
 }
