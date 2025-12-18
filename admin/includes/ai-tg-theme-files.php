@@ -1,6 +1,21 @@
 <?php
 if ( ! defined('ABSPATH') ) exit;
 
+function ai_tg_fs_path_without_query($rel) {
+    $rel = (string)$rel;
+    $rel = preg_replace('~\?.*$~', '', $rel);
+    $rel = preg_replace('~#.*$~', '', $rel);
+    return $rel;
+}
+
+function ai_tg_theme_asset_exists($theme_dir, $rel_path) {
+    $rel_path = ai_tg_fs_path_without_query($rel_path);
+    $rel_path = ltrim($rel_path, '/\\');
+    $abs = trailingslashit($theme_dir) . $rel_path;
+    return file_exists($abs);
+}
+
+
 function ai_tg_fix_page_links_by_map($html, $map = []) {
     if (empty($map) || !is_array($map)) return (string)$html;
 
@@ -106,23 +121,31 @@ if ( ! function_exists('ai_tg_fix_home_links') ) {
 }
 
 if ( ! function_exists('ai_tg_fix_img_src') ) {
-    function ai_tg_fix_img_src($html) {
+    function ai_tg_fix_img_src($html, $theme_dir = '') {
         return preg_replace_callback(
             '/<img\b([^>]*?)\bsrc=(["\'])([^"\']+)\2([^>]*)>/i',
-            function ($m) {
+            function ($m) use ($theme_dir) {
                 $before = $m[1];
-                $src    = $m[3];
+                $src    = trim((string)$m[3]);
                 $after  = $m[4];
 
-                if (ai_tg_should_skip_url($src)) return $m[0];
+                if ($src === '' || ai_tg_should_skip_url($src)) return $m[0];
 
-                $src = ai_tg_normalize_rel_path($src);
-                return '<img' . $before . 'src="<?php echo esc_url( get_stylesheet_directory_uri() ); ?>/' . esc_attr($src) . '"' . $after . '>';
+                $normalized = ai_tg_normalize_rel_path($src);
+
+                // ✅ ONLY rewrite if the file actually exists in the theme folder
+                if ($theme_dir && ai_tg_theme_asset_exists($theme_dir, $normalized)) {
+                    return '<img' . $before . 'src="<?php echo esc_url( get_stylesheet_directory_uri() ); ?>/' . esc_attr($normalized) . '"' . $after . '>';
+                }
+
+                // If not found, keep original (no guessing)
+                return $m[0];
             },
             (string)$html
         );
     }
 }
+
 
 if ( ! function_exists('ai_tg_fix_inline_style_urls') ) {
     function ai_tg_fix_inline_style_urls($html) {
@@ -369,7 +392,7 @@ if ( ! function_exists('ai_tg_ensure_wp_header_footer') ) {
  * Enqueue block in functions.php (REPLACEABLE, not messy append)
  */
 if ( ! function_exists('ai_tg_write_enqueues_into_functions_php') ) {
-    function ai_tg_write_enqueues_into_functions_php($theme_dir, $css_list, $js_list, &$err = '') {
+    function ai_tg_write_enqueues_into_functions_php($theme_dir, $css_list, $js_list, $text_domain = '', &$err = '') {
         $err = '';
 
         $fn = trailingslashit($theme_dir) . 'functions.php';
@@ -386,13 +409,14 @@ if ( ! function_exists('ai_tg_write_enqueues_into_functions_php') ) {
         $css_list = array_values(array_unique(array_filter((array)$css_list)));
         $js_list  = array_values(array_unique(array_filter((array)$js_list)));
 
-        $block_start = "/* AI_TG_ENQUEUES_START */";
-        $block_end   = "/* AI_TG_ENQUEUES_END */";
+        $block_start = "/* ENQUEUES_START */";
+        $block_end   = "/* ENQUEUES_END */";
 
         $lines = [];
         $lines[] = $block_start;
-        $lines[] = "add_action('wp_enqueue_scripts', function () {";
 
+        $lines[] = "add_action('wp_enqueue_scripts', function () {";
+        $lines[] = "/* ENQUEUES_START for CSS */";
         $i = 1;
         foreach ($css_list as $href) {
             $href = trim((string)$href);
@@ -412,6 +436,15 @@ if ( ! function_exists('ai_tg_write_enqueues_into_functions_php') ) {
             $i++;
         }
 
+        $text_domain = sanitize_key($text_domain);
+        if (!$text_domain) { $text_domain = sanitize_key(wp_get_theme()->get('TextDomain')); }
+        if (!$text_domain) { $text_domain = 'theme-style'; }
+
+        $lines[] = "    // Main theme style.css";
+        $lines[] = "    wp_enqueue_style('{$text_domain}', get_stylesheet_uri(), [], filemtime(get_stylesheet_directory() . '/style.css'), 'all');";
+
+        $lines[] = "";
+        $lines[] = "/* ENQUEUES_START for JSS */";
         $j = 1;
         foreach ($js_list as $src) {
             $src = trim((string)$src);
@@ -432,6 +465,18 @@ if ( ! function_exists('ai_tg_write_enqueues_into_functions_php') ) {
         }
 
         $lines[] = "});";
+
+        $lines[] = "add_action('after_setup_theme', function () {";
+        $lines[] = "    // Featured image";
+        $lines[] = "    add_theme_support('post-thumbnails');";
+        $lines[] = "    // Custom logo";
+        $lines[] = "    add_theme_support('custom-logo', []);";
+        $lines[] = "});";
+        $lines[] = "";
+        $lines[] = "// Remove <p> and <br/> from Contact Form 7";
+        $lines[] = "add_filter('wpcf7_autop_or_not', '__return_false');";
+        $lines[] = "";
+
         $lines[] = $block_end;
 
         $new_block = implode("\n", $lines) . "\n";

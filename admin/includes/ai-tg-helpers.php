@@ -1,27 +1,6 @@
 <?php
 if ( ! defined('ABSPATH') ) exit;
 
-/**
- * Remove CSS + JS assets but keep structure
- */
-function ai_tg_strip_assets($html) {
-
-    // Remove <link rel="stylesheet" ...>
-    $html = preg_replace(
-        '#<link(?![^>]*rel=["\']preconnect["\'])[^>]*href=["\'][^"\']+\.css[^"\']*["\'][^>]*>#i',
-        '',
-        $html
-    );
-
-    // Remove <script src="..."></script>
-    $html = preg_replace(
-        '#<script[^>]*src=["\'][^"\']+["\'][^>]*>\s*</script>#i',
-        '',
-        $html
-    );
-
-    return $html;
-}
 
 if ( ! function_exists('ai_tg_slugify') ) {
     function ai_tg_slugify($str) {
@@ -390,19 +369,7 @@ Text Domain: {$text_domain}
     }
 }
 
-function ai_tg_is_enqueueable_url($url) {
-    $url = trim((string)$url);
-    if ($url === '') return false;
 
-    // skip non-enqueueable
-    if (preg_match('~^(?:data:|mailto:|tel:|#)~i', $url)) return false;
-
-    // allow:
-    // - absolute external: http(s)://
-    // - protocol-relative: //
-    // - internal relative: /assets/... or assets/...
-    return true;
-}
 
 function ai_tg_strip_php_header_footer_includes($content) {
     $content = (string) $content;

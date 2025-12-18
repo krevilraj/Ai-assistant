@@ -105,30 +105,39 @@ function ai_tg_fix_img_src($html) {
     );
 }
 
-function ai_tg_fix_inline_style_urls($html) {
-    return preg_replace_callback(
-        '/\bstyle=(["\'])(.*?)\1/i',
-        function ($m) {
-            $outer_quote = $m[1];
-            $style = $m[2];
+if ( ! function_exists('ai_tg_fix_inline_style_urls') ) {
+    function ai_tg_fix_inline_style_urls($html, $theme_dir = '') {
+        return preg_replace_callback(
+            '/\bstyle=(["\'])(.*?)\1/i',
+            function ($m) use ($theme_dir) {
+                $outer_quote = $m[1];
+                $style = $m[2];
 
-            $style = preg_replace_callback(
-                '~url\(\s*(["\']?)([^"\')]+)\1\s*\)~i',
-                function ($u) {
-                    $url = $u[2];
-                    if (ai_tg_should_skip_url($url)) return $u[0];
+                $style = preg_replace_callback(
+                    '~url\(\s*(["\']?)([^"\')]+)\1\s*\)~i',
+                    function ($u) use ($theme_dir) {
+                        $url = trim((string)$u[2]);
+                        if ($url === '' || ai_tg_should_skip_url($url)) return $u[0];
 
-                    $url = ai_tg_normalize_rel_path($url);
-                    return "url('<?php echo esc_url( get_stylesheet_directory_uri() ); ?>/$url')";
-                },
-                $style
-            );
+                        $normalized = ai_tg_normalize_rel_path($url);
 
-            return 'style=' . $outer_quote . $style . $outer_quote;
-        },
-        (string)$html
-    );
+                        // ✅ ONLY rewrite if exists
+                        if ($theme_dir && ai_tg_theme_asset_exists($theme_dir, $normalized)) {
+                            return "url('<?php echo esc_url( get_stylesheet_directory_uri() ); ?>/$normalized')";
+                        }
+
+                        return $u[0]; // keep original (no guessing)
+                    },
+                    $style
+                );
+
+                return 'style=' . $outer_quote . $style . $outer_quote;
+            },
+            (string)$html
+        );
+    }
 }
+
 
 if ( ! function_exists('ai_tg_strip_css_js_tags') ) {
     function ai_tg_strip_css_js_tags($html) {
@@ -160,14 +169,17 @@ if ( ! function_exists('ai_tg_strip_css_js_tags') ) {
 }
 
 
-function ai_tg_correct_html_to_php($html) {
-    $html = (string)$html;
-    $html = ai_tg_fix_home_links($html);
-    $html = ai_tg_fix_img_src($html);
-    $html = ai_tg_fix_inline_style_urls($html);
-    $html = ai_tg_strip_css_js_tags($html);
-    return $html;
+if ( ! function_exists('ai_tg_correct_html_to_php') ) {
+    function ai_tg_correct_html_to_php($html, $theme_dir = '') {
+        $html = (string)$html;
+        $html = ai_tg_fix_home_links($html);
+        $html = ai_tg_fix_img_src($html, $theme_dir);
+        $html = ai_tg_fix_inline_style_urls($html, $theme_dir);
+        $html = ai_tg_strip_css_js_tags($html);
+        return $html;
+    }
 }
+
 
 if ( ! function_exists('ai_tg_collect_assets_from_html') ) {
     function ai_tg_collect_assets_from_html($html) {
@@ -215,53 +227,59 @@ if ( ! function_exists('ai_tg_collect_assets_from_html') ) {
 /**
  * Extract ZIP into theme root (copy folders/files)
  */
-function ai_tg_extract_zip_to_theme_root($zip_path, $theme_dir, &$err = '') {
-    $err = '';
+if ( ! function_exists('ai_tg_extract_zip_to_theme_root') ) {
+    function ai_tg_extract_zip_to_theme_root($zip_path, $theme_dir, &$err = '') {
+        $err = '';
 
-    if (!file_exists($zip_path)) { $err = 'ZIP not found.'; return false; }
-    if (!file_exists($theme_dir)) { $err = 'Theme dir not found.'; return false; }
+        if (!file_exists($zip_path)) { $err = 'ZIP not found.'; return false; }
+        if (!file_exists($theme_dir)) { $err = 'Theme dir not found.'; return false; }
 
-    require_once ABSPATH . 'wp-admin/includes/file.php';
-    WP_Filesystem();
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        WP_Filesystem();
 
-    $upload = wp_upload_dir();
-    $tmp = trailingslashit($upload['basedir']) . 'ai_theme_generator_extract/' . time() . '/';
-    wp_mkdir_p($tmp);
+        $upload = wp_upload_dir();
+        $tmp = trailingslashit($upload['basedir']) . 'ai_theme_generator_extract/' . time() . '/';
+        wp_mkdir_p($tmp);
 
-    $unzipped = unzip_file($zip_path, $tmp);
-    if (is_wp_error($unzipped)) {
-        $err = 'Unzip failed: ' . $unzipped->get_error_message();
-        return false;
-    }
-
-    // wrapper folder detection
-    $items = array_values(array_diff(scandir($tmp), ['.','..']));
-    $root_to_copy = $tmp;
-    if (count($items) === 1) {
-        $one = $tmp . $items[0];
-        if (is_dir($one)) $root_to_copy = trailingslashit($one);
-    }
-
-    $it = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($root_to_copy, RecursiveDirectoryIterator::SKIP_DOTS),
-        RecursiveIteratorIterator::SELF_FIRST
-    );
-
-    foreach ($it as $f) {
-        $src = $f->getPathname();
-        $rel = ltrim(str_replace($root_to_copy, '', $src), '/\\');
-        $dst = trailingslashit($theme_dir) . $rel;
-
-        if ($f->isDir()) {
-            if (!file_exists($dst)) wp_mkdir_p($dst);
-        } else {
-            if (!file_exists(dirname($dst))) wp_mkdir_p(dirname($dst));
-            @copy($src, $dst);
+        $unzipped = unzip_file($zip_path, $tmp);
+        if (is_wp_error($unzipped)) {
+            $err = 'Unzip failed: ' . $unzipped->get_error_message();
+            return false;
         }
-    }
 
-    return true;
+        // wrapper folder detection (if zip has a single top folder)
+        $items = array_values(array_diff(scandir($tmp), ['.','..']));
+        $root_to_copy = $tmp;
+        if (count($items) === 1) {
+            $one = $tmp . $items[0];
+            if (is_dir($one)) $root_to_copy = trailingslashit($one);
+        }
+
+        // Copy EVERYTHING (files + folders) from extracted root into theme
+        $it = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($root_to_copy, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($it as $f) {
+            $src = $f->getPathname();
+            $rel = ltrim(str_replace($root_to_copy, '', $src), '/\\');
+            if ($rel === '') continue;
+
+            $dst = trailingslashit($theme_dir) . $rel;
+
+            if ($f->isDir()) {
+                if (!file_exists($dst)) wp_mkdir_p($dst);
+            } else {
+                if (!file_exists(dirname($dst))) wp_mkdir_p(dirname($dst));
+                @copy($src, $dst);
+            }
+        }
+
+        return true;
+    }
 }
+
 
 
 
@@ -282,6 +300,10 @@ function ai_tg_write_page_template_in_theme($theme_dir, $slug, $source_filename,
     }
 
     $raw_content = ai_tg_strip_php_header_footer_includes($raw_content);
+
+    $raw_content = ai_tg_fix_page_links_by_map($raw_content, $GLOBALS['ai_tg_page_link_map'] ?? []);
+    $raw_content = ai_tg_correct_html_to_php($raw_content, $theme_dir);
+
 
 
     $php  = "<?php\n";
@@ -595,9 +617,11 @@ if ($is_submitted) {
             $page_link_map[strtolower($path)] = $slug;        // sobre-nos.php
             $page_link_map[strtolower($base_no_ext)] = $slug; // sobre-nos
         }
+        $GLOBALS['ai_tg_page_link_map'] = $page_link_map;
 
 
-// 3) Build header/footer from ZIP (ONCE)
+
+        // 3) Build header/footer from ZIP (ONCE)
         if (empty($errors)) {
             $hf_err = '';
             if (!ai_tg_build_header_footer_from_zip(
@@ -614,15 +638,15 @@ if ($is_submitted) {
         }
 
 
-// 4) Write enqueues to functions.php
+        // 4) Write enqueues to functions.php
         if (empty($errors)) {
             $fn_err = '';
-            if (!ai_tg_write_enqueues_into_functions_php($theme_dir, $all_css, $all_js, $fn_err)) {
+            if (!ai_tg_write_enqueues_into_functions_php($theme_dir, $all_css, $all_js, $new_theme['text_domain'], $fn_err)) {
                 $errors[] = $fn_err ?: 'Failed writing enqueues to functions.php';
             }
         }
 
-// 5) Create pages + templates
+        // 5) Create pages + templates
         if (empty($errors)) {
             [$created, $create_errors] = ai_tg_create_wp_pages_with_templates(
                 $clean,
