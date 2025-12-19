@@ -126,19 +126,24 @@ if ( ! function_exists('ai_tg_fix_img_src') ) {
             '/<img\b([^>]*?)\bsrc=(["\'])([^"\']+)\2([^>]*)>/i',
             function ($m) use ($theme_dir) {
                 $before = $m[1];
-                $src    = trim((string)$m[3]);
+                $src    = $m[3];
                 $after  = $m[4];
 
-                if ($src === '' || ai_tg_should_skip_url($src)) return $m[0];
+                // Skip if already PHP code (from featured image replacement)
+                if (strpos($src, '<?php') !== false) {
+                    return $m[0];
+                }
+
+                if (ai_tg_should_skip_url($src)) return $m[0];
 
                 $normalized = ai_tg_normalize_rel_path($src);
 
-                // ✅ ONLY rewrite if the file actually exists in the theme folder
+                // Check if this is NOT a featured image (slug-based images should have been replaced already)
+                // But if not replaced, still convert to theme path
                 if ($theme_dir && ai_tg_theme_asset_exists($theme_dir, $normalized)) {
                     return '<img' . $before . 'src="<?php echo esc_url( get_stylesheet_directory_uri() ); ?>/' . esc_attr($normalized) . '"' . $after . '>';
                 }
 
-                // If not found, keep original (no guessing)
                 return $m[0];
             },
             (string)$html
@@ -148,21 +153,32 @@ if ( ! function_exists('ai_tg_fix_img_src') ) {
 
 
 if ( ! function_exists('ai_tg_fix_inline_style_urls') ) {
-    function ai_tg_fix_inline_style_urls($html) {
+    function ai_tg_fix_inline_style_urls($html, $theme_dir = '') {
         return preg_replace_callback(
             '/\bstyle=(["\'])(.*?)\1/i',
-            function ($m) {
+            function ($m) use ($theme_dir) {
                 $outer_quote = $m[1];
                 $style = $m[2];
 
+                // Skip if already contains PHP code
+                if (strpos($style, '<?php') !== false) {
+                    return 'style=' . $outer_quote . $style . $outer_quote;
+                }
+
                 $style = preg_replace_callback(
                     '~url\(\s*(["\']?)([^"\')]+)\1\s*\)~i',
-                    function ($u) {
-                        $url = $u[2];
-                        if (ai_tg_should_skip_url($url)) return $u[0];
+                    function ($u) use ($theme_dir) {
+                        $url = trim((string)$u[2]);
+                        if ($url === '' || ai_tg_should_skip_url($url)) return $u[0];
 
-                        $url = ai_tg_normalize_rel_path($url);
-                        return "url('<?php echo esc_url( get_stylesheet_directory_uri() ); ?>/$url')";
+                        $normalized = ai_tg_normalize_rel_path($url);
+
+                        // ✅ ONLY rewrite if exists
+                        if ($theme_dir && ai_tg_theme_asset_exists($theme_dir, $normalized)) {
+                            return "url('<?php echo esc_url( get_stylesheet_directory_uri() ); ?>/" . $normalized . "')";
+                        }
+
+                        return $u[0]; // keep original (no guessing)
                     },
                     $style
                 );
@@ -184,16 +200,24 @@ if ( ! function_exists('ai_tg_strip_css_js_tags') ) {
 }
 
 if ( ! function_exists('ai_tg_correct_html_to_php') ) {
-    function ai_tg_correct_html_to_php($html) {
+    function ai_tg_correct_html_to_php($html, $theme_dir = '') {
         $html = (string)$html;
+
+        // Step 1: Fix home links
         $html = ai_tg_fix_home_links($html);
-        $html = ai_tg_fix_img_src($html);
-        $html = ai_tg_fix_inline_style_urls($html);
+
+        // Step 2: Fix image sources (but skip PHP code)
+        $html = ai_tg_fix_img_src($html, $theme_dir);
+
+        // Step 3: Fix inline style URLs (using smart version)
+        $html = ai_tg_smart_fix_inline_style_urls($html, $theme_dir);
+
+        // Step 4: Strip CSS/JS tags
         $html = ai_tg_strip_css_js_tags($html);
+
         return $html;
     }
 }
-
 if ( ! function_exists('ai_tg_collect_assets_from_html') ) {
     function ai_tg_collect_assets_from_html($html) {
         $html = (string)$html;
@@ -512,7 +536,13 @@ if ( ! function_exists('ai_tg_write_page_template_in_theme') ) {
             $raw_content = ai_tg_extract_body_inner($raw_content);
         }
 
-        $raw_content = ai_tg_correct_html_to_php($raw_content);
+        $raw_content = ai_tg_strip_php_header_footer_includes($raw_content);
+
+        // IMPORTANT: Do featured image replacement BEFORE URL fixing
+        $raw_content = ai_tg_replace_slug_image_with_featured($raw_content, $slug);
+
+        $raw_content = ai_tg_fix_page_links_by_map($raw_content, $GLOBALS['ai_tg_page_link_map'] ?? []);
+        $raw_content = ai_tg_correct_html_to_php($raw_content, $theme_dir);
 
         $php  = "<?php\n";
         $php .= "/**\n";
@@ -534,84 +564,7 @@ if ( ! function_exists('ai_tg_write_page_template_in_theme') ) {
     }
 }
 
-/**
- * Create WP pages + templates
- */
-if ( ! function_exists('ai_tg_create_wp_pages_with_templates') ) {
-    function ai_tg_create_wp_pages_with_templates($rows, $page_status, $zip_saved_path, $theme_dir, $target_mode, $new_theme_slug_for_activation = '', $activate_theme = false) {
-        $created = [];
-        $errors = [];
 
-        if (!current_user_can('manage_options')) {
-            return [[], ['Permission denied.']];
-        }
-
-        $page_status = ($page_status === 'publish') ? 'publish' : 'draft';
-
-        if ($target_mode === 'new' && $new_theme_slug_for_activation && $activate_theme) {
-            switch_theme($new_theme_slug_for_activation);
-        }
-
-        foreach ($rows as $row) {
-            $create = !empty($row['create']) && (string)$row['create'] === '1';
-            if (!$create) continue;
-
-            $path  = isset($row['path']) ? sanitize_text_field($row['path']) : '';
-            $title = isset($row['title']) ? sanitize_text_field($row['title']) : '';
-            $slug  = isset($row['slug']) ? sanitize_title($row['slug']) : '';
-
-            if (!$title) $title = 'Untitled';
-            if (!$slug)  $slug  = sanitize_title($title);
-
-            $existing = get_page_by_path($slug, OBJECT, 'page');
-            if ($existing instanceof WP_Post) {
-                $errors[] = "Skipped '{$title}' (slug '{$slug}') — already exists (ID {$existing->ID}).";
-                continue;
-            }
-
-            $source_basename = basename($path);
-            $ext = strtolower(pathinfo($source_basename, PATHINFO_EXTENSION));
-
-            $zip_err = '';
-            $content = ai_tg_get_zip_file_content($zip_saved_path, $source_basename, $zip_err);
-
-            if ($zip_err || $content === '') {
-                $errors[] = "Failed reading '{$source_basename}' from ZIP for '{$title}': " . ($zip_err ?: 'Empty content');
-                continue;
-            }
-
-            $template_file = ai_tg_write_page_template_in_theme($theme_dir, $slug, $source_basename, $content, $ext);
-            if (is_wp_error($template_file)) {
-                $errors[] = "Failed writing template for '{$title}' ({$slug}): " . $template_file->get_error_message();
-                continue;
-            }
-
-            $post_id = wp_insert_post([
-                'post_type'   => 'page',
-                'post_title'  => $title,
-                'post_name'   => $slug,
-                'post_status' => $page_status,
-            ], true);
-
-            if (is_wp_error($post_id)) {
-                $errors[] = "Failed creating page '{$title}' ({$slug}): " . $post_id->get_error_message();
-                continue;
-            }
-
-            update_post_meta($post_id, '_wp_page_template', $template_file);
-            update_post_meta($post_id, '_ai_tg_source_file', $source_basename);
-
-            $created[] = [
-                'id'       => (int)$post_id,
-                'title'    => $title,
-                'slug'     => $slug,
-                'template' => $template_file,
-            ];
-        }
-
-        return [$created, $errors];
-    }
-}
 
 
 function ai_tg_build_header_footer_from_zip($zip_path, $theme_dir, &$all_css = [], &$all_js = [], $page_link_map = [], &$err = '') {
@@ -707,4 +660,104 @@ function ai_tg_build_header_footer_from_zip($zip_path, $theme_dir, &$all_css = [
     }
 
     return true;
+}
+
+
+if (!function_exists('ai_tg_upload_and_set_featured_image')) {
+    function ai_tg_upload_and_set_featured_image($post_id, $abs_path, $title = '', &$err = '') {
+        $err = '';
+        $abs_path = (string) $abs_path;
+
+        if (!$post_id || !file_exists($abs_path)) {
+            $err = 'Image file missing: ' . $abs_path;
+            return 0;
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+
+        $filename = basename($abs_path);
+
+        // Copy to a true temp file
+        $tmp = wp_tempnam($filename);
+        if (!$tmp) {
+            $err = 'wp_tempnam() failed';
+            return 0;
+        }
+
+        if (!@copy($abs_path, $tmp)) {
+            @unlink($tmp);
+            $err = 'Failed to copy to temp: ' . $abs_path;
+            return 0;
+        }
+
+        $file_array = [
+            'name'     => $filename,
+            'tmp_name' => $tmp,
+            'error'    => 0,
+            'size'     => filesize($tmp),
+        ];
+
+        // Do the sideload
+        $att_id = media_handle_sideload($file_array, $post_id, $title ?: '');
+
+        // Always cleanup temp
+        if (file_exists($tmp)) {
+            @unlink($tmp);
+        }
+
+        if (is_wp_error($att_id)) {
+            $err = 'media_handle_sideload failed: ' . $att_id->get_error_message();
+            return 0;
+        }
+
+        set_post_thumbnail($post_id, (int)$att_id);
+        return (int)$att_id;
+    }
+}
+
+if ( ! function_exists('ai_tg_smart_fix_inline_style_urls') ) {
+    function ai_tg_smart_fix_inline_style_urls($html, $theme_dir = '') {
+        $html = (string)$html;
+
+        // First, extract and process all style attributes
+        $html = preg_replace_callback(
+            '/\bstyle=(["\'])(.*?)\1/i',
+            function ($m) use ($theme_dir) {
+                $outer_quote = $m[1];
+                $style = $m[2];
+
+                // Skip if already contains PHP code
+                if (strpos($style, '<?php') !== false) {
+                    return 'style=' . $outer_quote . $style . $outer_quote;
+                }
+
+                // Process URLs in the style
+                $style = preg_replace_callback(
+                    '~url\(\s*(["\']?)([^"\')]+)\1\s*\)~i',
+                    function ($u) use ($theme_dir) {
+                        $url = trim((string)$u[2]);
+                        if ($url === '' || ai_tg_should_skip_url($url)) return $u[0];
+
+                        // Check if it's a relative path
+                        if (strpos($url, 'http') !== 0 && strpos($url, '//') !== 0) {
+                            $normalized = ai_tg_normalize_rel_path($url);
+                            if ($theme_dir && ai_tg_theme_asset_exists($theme_dir, $normalized)) {
+                                return "url('<?php echo esc_url( get_stylesheet_directory_uri() ); ?>/" . $normalized . "')";
+                            }
+                        }
+
+                        return $u[0];
+                    },
+                    $style
+                );
+
+                return 'style=' . $outer_quote . $style . $outer_quote;
+            },
+            $html
+        );
+
+        return $html;
+    }
 }

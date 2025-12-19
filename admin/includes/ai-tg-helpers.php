@@ -387,3 +387,150 @@ function ai_tg_strip_php_header_footer_includes($content) {
     return preg_replace($patterns, '', $content);
 }
 
+if (!function_exists('ai_tg_find_featured_image_for_slug')) {
+    function ai_tg_find_featured_image_for_slug($theme_dir, $slug) {
+        $slug = sanitize_title($slug);
+        if (!$slug || !is_dir($theme_dir)) return '';
+
+        $allowed = ['jpg','jpeg','png','webp'];
+        $it = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($theme_dir, RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+
+        foreach ($it as $f) {
+            if (!$f->isFile()) continue;
+
+            $ext = strtolower(pathinfo($f->getFilename(), PATHINFO_EXTENSION));
+            if (!in_array($ext, $allowed, true)) continue;
+
+            $name = strtolower(pathinfo($f->getFilename(), PATHINFO_FILENAME));
+            if ($name === strtolower($slug)) {
+                return $f->getPathname(); // absolute path
+            }
+        }
+
+        return '';
+    }
+}
+if (!function_exists('ai_tg_attach_featured_image_from_path')) {
+    function ai_tg_attach_featured_image_from_path($post_id, $abs_path, &$err = '') {
+        $err = '';
+        if (!$post_id || !file_exists($abs_path)) { $err = 'Image not found.'; return 0; }
+
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+
+        $filename = basename($abs_path);
+
+        $file_array = [
+            'name'     => $filename,
+            'tmp_name' => $abs_path,
+        ];
+
+        // This copies the file into uploads and creates attachment
+        $att_id = media_handle_sideload($file_array, $post_id);
+
+        if (is_wp_error($att_id)) {
+            $err = $att_id->get_error_message();
+            return 0;
+        }
+
+        set_post_thumbnail($post_id, $att_id);
+        return (int)$att_id;
+    }
+}
+
+if (!function_exists('ai_tg_replace_slug_image_with_featured')) {
+    function ai_tg_replace_slug_image_with_featured($html, $slug) {
+        $slug = sanitize_title($slug);
+        if (!$slug) return (string)$html;
+
+        $html = (string)$html;
+
+        // Just replace ANY image in the assets/images folder with featured image
+        // This is a broad replacement that will catch most cases
+        $html = preg_replace_callback(
+            '/<img\b([^>]*?)src=(["\'])([^"\']*assets\/images\/[^"\']*\.(?:jpg|jpeg|png|webp|gif))\2([^>]*)>/i',
+            function($matches) {
+                // Get attributes
+                $before_attrs = $matches[1];
+                $image_path = $matches[3];
+                $after_attrs = $matches[4];
+
+                // Extract existing classes
+                $all_attrs = $before_attrs . ' ' . $after_attrs;
+                $class = '';
+                if (preg_match('/class=(["\'])(.*?)\1/i', $all_attrs, $class_match)) {
+                    $class = $class_match[2];
+                }
+
+                $all_classes = $class ? $class . ' wp-post-image' : 'wp-post-image';
+                $image_name = basename($image_path);
+
+                // Return PHP code for featured image
+                return "<?php if (has_post_thumbnail()) : ?>\n" .
+                    "<?php the_post_thumbnail('full', ['class' => '" . esc_attr($all_classes) . "', 'alt' => esc_attr(get_the_title())]); ?>\n" .
+                    "<?php else : ?>\n" .
+                    "<img src=\"<?php echo esc_url(get_stylesheet_directory_uri()); ?>/assets/images/" . $image_name . "\" class=\"" . esc_attr($class) . "\" alt=\"\">\n" .
+                    "<?php endif; ?>";
+            },
+            $html,
+            1 // Only replace the FIRST image (usually the hero/banner)
+        );
+
+        // Also replace background images
+        $html = preg_replace_callback(
+            '/style=(["\'])(.*?)background-image\s*:\s*url\(\s*(["\']?)([^"\')]*assets\/images\/[^"\')]*\.(?:jpg|jpeg|png|webp|gif))\3\s*\)(.*?)\1/i',
+            function($matches) {
+                $image_path = $matches[4];
+                $image_name = basename($image_path);
+                $before_style = $matches[2];
+                $after_style = $matches[5];
+
+                return "style=\"" . $before_style .
+                    "background-image:url('<?php echo esc_url(has_post_thumbnail() ? get_the_post_thumbnail_url(get_the_ID(), \"full\") : get_stylesheet_directory_uri() . \"/assets/images/" . $image_name . "\"); ?>')" .
+                    $after_style . "\"";
+            },
+            $html,
+            1 // Only replace the FIRST background image
+        );
+
+        return $html;
+    }
+}
+
+
+if (!function_exists('ai_tg_pick_featured_image_from_html')) {
+    function ai_tg_pick_featured_image_from_html($html) {
+        $html = (string)$html;
+
+        // 1) First <img src="...">
+        if (preg_match('~<img\b[^>]*\bsrc=(["\'])([^"\']+)\1~i', $html, $m)) {
+            $src = trim($m[2]);
+            if ($src !== '' && !ai_tg_should_skip_url($src)) {
+                return ai_tg_normalize_rel_path($src);
+            }
+        }
+
+        // 2) First inline style background-image: url(...)
+        if (preg_match('~url\(\s*(["\']?)([^"\')]+)\1\s*\)~i', $html, $m2)) {
+            $url = trim($m2[2]);
+            if ($url !== '' && !ai_tg_should_skip_url($url)) {
+                return ai_tg_normalize_rel_path($url);
+            }
+        }
+
+        return '';
+    }
+}
+
+if (!function_exists('ai_tg_abs_path_from_theme_rel')) {
+    function ai_tg_abs_path_from_theme_rel($theme_dir, $rel_path) {
+        $rel_path = ai_tg_fs_path_without_query($rel_path);
+        $rel_path = ltrim($rel_path, '/\\');
+        $abs = trailingslashit($theme_dir) . $rel_path;
+        return file_exists($abs) ? $abs : '';
+    }
+}
+

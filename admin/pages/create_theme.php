@@ -30,6 +30,14 @@ require_once plugin_dir_path(__FILE__) . '../includes/ai-tg-theme-files.php';
  * -----------------------------
  */
 
+// Add to create_theme.php after the includes
+function ai_tg_debug_log($message, $data = null) {
+    error_log('AI_TG_DEBUG: ' . $message);
+    if ($data !== null) {
+        error_log('AI_TG_DEBUG DATA: ' . print_r($data, true));
+    }
+}
+
 function ai_tg_should_skip_url($url) {
     return (bool) preg_match('~^(?:https?:)?//|data:|mailto:|tel:|#~i', trim((string)$url));
 }
@@ -288,41 +296,44 @@ if ( ! function_exists('ai_tg_extract_zip_to_theme_root') ) {
 /**
  * Write template file in theme root: page-{slug}.php
  */
-function ai_tg_write_page_template_in_theme($theme_dir, $slug, $source_filename, $raw_content, $ext) {
-    $slug = sanitize_title($slug);
-    if (!$slug) return new WP_Error('bad_slug', 'Invalid slug.');
+if ( ! function_exists('ai_tg_write_page_template_in_theme') ) {
+    function ai_tg_write_page_template_in_theme($theme_dir, $slug, $source_filename, $raw_content, $ext) {
+        $slug = sanitize_title($slug);
+        if (!$slug) return new WP_Error('bad_slug', 'Invalid slug.');
 
-    $template_file = 'page-' . $slug . '.php';
-    $template_path = trailingslashit($theme_dir) . $template_file;
+        $template_file = 'page-' . $slug . '.php';
+        $template_path = trailingslashit($theme_dir) . $template_file;
 
-    if ($ext === 'html') {
-        $raw_content = ai_tg_extract_body_inner($raw_content);
+        if ($ext === 'html') {
+            $raw_content = ai_tg_extract_body_inner($raw_content);
+        }
+
+        $raw_content = ai_tg_strip_php_header_footer_includes($raw_content);
+
+        // IMPORTANT: Do featured image replacement BEFORE URL fixing
+        $raw_content = ai_tg_replace_slug_image_with_featured($raw_content, $slug);
+
+        $raw_content = ai_tg_fix_page_links_by_map($raw_content, $GLOBALS['ai_tg_page_link_map'] ?? []);
+        $raw_content = ai_tg_correct_html_to_php($raw_content, $theme_dir);
+
+        $php  = "<?php\n";
+        $php .= "/**\n";
+        $php .= " * Template Name: AI - {$slug}\n";
+        $php .= " * Source: {$source_filename}\n";
+        $php .= " */\n\n";
+        $php .= "if ( ! defined('ABSPATH') ) exit;\n";
+        $php .= "get_header();\n\n";
+        $php .= "?>\n";
+        $php .= $raw_content . "\n";
+        $php .= "<?php\n\n";
+        $php .= "get_footer();\n";
+
+        if (file_put_contents($template_path, $php) === false) {
+            return new WP_Error('write_fail', 'Failed to write template file: ' . $template_file);
+        }
+
+        return $template_file;
     }
-
-    $raw_content = ai_tg_strip_php_header_footer_includes($raw_content);
-
-    $raw_content = ai_tg_fix_page_links_by_map($raw_content, $GLOBALS['ai_tg_page_link_map'] ?? []);
-    $raw_content = ai_tg_correct_html_to_php($raw_content, $theme_dir);
-
-
-
-    $php  = "<?php\n";
-    $php .= "/**\n";
-    $php .= " * Template Name: AI - {$slug}\n";
-    $php .= " * Source: {$source_filename}\n";
-    $php .= " */\n\n";
-    $php .= "if ( ! defined('ABSPATH') ) exit;\n";
-    $php .= "get_header();\n\n";
-    $php .= "?>\n";
-    $php .= $raw_content . "\n";
-    $php .= "<?php\n\n";
-    $php .= "get_footer();\n";
-
-    if (file_put_contents($template_path, $php) === false) {
-        return new WP_Error('write_fail', 'Failed to write template file: ' . $template_file);
-    }
-
-    return $template_file;
 }
 
 /**
@@ -392,17 +403,50 @@ function ai_tg_create_wp_pages_with_templates($rows, $page_status, $zip_saved_pa
         update_post_meta($post_id, '_wp_page_template', $template_file);
         update_post_meta($post_id, '_ai_tg_source_file', $source_basename);
 
+        // Featured image (optional per page)
+        $do_featured = !empty($row['featured']) && (string)$row['featured'] === '1';
+
+        if ($do_featured) {
+            $img_path = ai_tg_find_featured_image_for_slug($theme_dir, $slug);
+
+            if ($img_path) {
+                $up_err = '';
+                $att_id = ai_tg_upload_and_set_featured_image($post_id, $img_path, $title, $up_err);
+
+                if (!$att_id) {
+                    $errors[] = "Featured image FAILED for '{$title}' ({$slug}): {$up_err}";
+                } else {
+                    // Successfully set featured image
+                    $success[] = "Featured image set for '{$title}' (attachment ID: {$att_id})";
+                }
+            } else {
+                $errors[] = "Featured image NOT FOUND for '{$title}' ({$slug}). No matching image file.";
+            }
+        }
+
         $created[] = [
             'id'       => (int)$post_id,
             'title'    => $title,
             'slug'     => $slug,
             'template' => $template_file,
         ];
+
+        // Inside the foreach loop in ai_tg_create_wp_pages_with_templates function
+        $zip_err = '';
+        $content = ai_tg_get_zip_file_content($zip_saved_path, $source_basename, $zip_err);
+
+        // DEBUG: Log the original content
+        error_log('AI_TG_DEBUG: Original content for ' . $source_basename);
+        error_log('AI_TG_DEBUG: First 1000 chars: ' . substr($content, 0, 1000));
+
+        if ($zip_err || $content === '') {
+            $errors[] = "Failed reading '{$source_basename}' from ZIP for '{$title}': " . ($zip_err ?: 'Empty content');
+            continue;
+        }
     }
 
     return [$created, $errors];
 }
-
 /**
  * -----------------------------
  * Handle submit steps
@@ -465,6 +509,7 @@ if ($is_submitted) {
                 'title'  => isset($r['title']) ? sanitize_text_field($r['title']) : '',
                 'slug'   => isset($r['slug']) ? sanitize_text_field($r['slug']) : '',
                 'create' => isset($r['create']) ? sanitize_text_field($r['create']) : '0',
+                'featured' => isset($r['featured']) ? sanitize_text_field($r['featured']) : '0',
             ];
         }
 
@@ -476,6 +521,7 @@ if ($is_submitted) {
                 'suggested_title' => $r['title'],
                 'suggested_slug'  => ai_tg_slugify($r['slug']),
                 'create'          => $r['create'],
+                'featured'        => $r['featured'],
             ];
         }
 
@@ -496,7 +542,7 @@ if ($is_submitted) {
          * 5) Create page templates
          */
 
-// 1) Extract ZIP to theme root
+        // 1) Extract ZIP to theme root
         if (empty($errors)) {
             $extract_err = '';
             if (!ai_tg_extract_zip_to_theme_root($zip_saved_path, $theme_dir, $extract_err)) {
@@ -507,7 +553,7 @@ if ($is_submitted) {
         $all_css = [];
         $all_js  = [];
 
-// 2) Collect ALL assets from ZIP originals (BEFORE any file modifications)
+        // 2) Collect ALL assets from ZIP originals (BEFORE any file modifications)
         if (empty($errors)) {
 
             error_log('=== ASSET COLLECTION DEBUG START ===');
@@ -826,6 +872,7 @@ $detected_pages = is_array($detected_pages) ? $detected_pages : [];
                         <th>Page Title</th>
                         <th>Slug</th>
                         <th>Create</th>
+                        <th>Featured Image</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -859,16 +906,26 @@ $detected_pages = is_array($detected_pages) ? $detected_pages : [];
                                            value="<?php echo esc_attr($p['suggested_slug']); ?>"
                                            autocomplete="off">
                                 </td>
-
                                 <td style="text-align:center;">
                                     <label class="ai-switch">
                                         <input type="checkbox"
                                                name="ai_tg_pages[<?php echo (int)$i; ?>][create]"
                                                value="1"
-                                               checked>
+                                            <?php checked(!empty($p['create']), true); ?>>
                                         <span class="ai-switch-slider"></span>
                                     </label>
                                 </td>
+
+                                <td style="text-align:center;">
+                                    <label class="ai-switch">
+                                        <input type="checkbox"
+                                               name="ai_tg_pages[<?php echo (int)$i; ?>][featured]"
+                                               value="1"
+                                            <?php checked(!empty($p['featured']), true); ?>>
+                                        <span class="ai-switch-slider"></span>
+                                    </label>
+                                </td>
+
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
