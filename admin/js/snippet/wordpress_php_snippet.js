@@ -57,9 +57,13 @@ endif;
     the_logo: () => insertSnippetV2(`<?php 
     if (has_custom_logo()) {
         $custom_logo_id = get_theme_mod('custom_logo');
-        $logo = wp_get_attachment_image($custom_logo_id, 'full', false, array('class' => 'img-fluid'));
-        echo $logo;
-    } ?>`),
+        $logo_url = wp_get_attachment_image_src($custom_logo_id, 'full');
+        
+        if ($logo_url) {
+            echo '<img src="' . esc_url($logo_url[0]) . '" class="logo-white" alt="' . get_bloginfo('name') . '">';
+        } 
+    } 
+    ?>`),
     page_link: (link) => insertSnippetV2(`${link}@cursor@`, 1),
     first_class: () => insertSnippetV2(`<?php if($i==0) echo '@content@@cursor@';?>`),
     even_class: () => insertSnippetV2(`<?php if($i%2==0) echo '@content@@cursor@';?>`),
