@@ -2213,6 +2213,9 @@ PHP;
                 #wp-admin-bar-ai_assistant {
                     display: none !important;
                 }
+		#wp-admin-bar-ai-assistant-edit-template{
+					display:none !important
+				}
             </style>
             <?php
         }
