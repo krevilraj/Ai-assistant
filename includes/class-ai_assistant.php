@@ -120,7 +120,7 @@ class AI_Assistant
         add_action( 'admin_bar_menu', [ $this, 'ai_assistant_admin_bar_open_new_tab' ], 999 );
         add_action( 'wp_ajax_ai_assistant_get_meta_json', [ $this, 'ai_assistant_get_meta_json' ] );
         add_action( 'wp_ajax_ai_assistant_update_meta_from_json', [ $this, 'ai_assistant_update_meta_from_json' ] );
-        add_action( 'admin_head', [ $this, 'ai_assistant_imp_style' ] );
+        add_action( 'wp_head', [ $this, 'ai_assistant_imp_style' ] );
 
 
         // create new theme
