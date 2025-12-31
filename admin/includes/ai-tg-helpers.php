@@ -533,4 +533,3 @@ if (!function_exists('ai_tg_abs_path_from_theme_rel')) {
         return file_exists($abs) ? $abs : '';
     }
 }
-

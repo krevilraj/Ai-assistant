@@ -173,7 +173,7 @@ if ( ! function_exists('ai_tg_fix_inline_style_urls') ) {
 
                         $normalized = ai_tg_normalize_rel_path($url);
 
-                        // ✅ ONLY rewrite if exists
+                        // âœ… ONLY rewrite if exists
                         if ($theme_dir && ai_tg_theme_asset_exists($theme_dir, $normalized)) {
                             return "url('<?php echo esc_url( get_stylesheet_directory_uri() ); ?>/" . $normalized . "')";
                         }
@@ -344,7 +344,7 @@ if ( ! function_exists('ai_tg_extract_zip_to_theme_root') ) {
 
 /**
  * Ensure header/footer exist + corrected + wp_head/wp_footer
- * IMPORTANT: Your header/footer can contain navbar/footer HTML (repeatable parts) — this keeps them.
+ * IMPORTANT: Your header/footer can contain navbar/footer HTML (repeatable parts) â€” this keeps them.
  */
 if ( ! function_exists('ai_tg_ensure_wp_header_footer') ) {
     function ai_tg_ensure_wp_header_footer($theme_dir, &$err = '') {
@@ -620,7 +620,7 @@ function ai_tg_build_header_footer_from_zip($zip_path, $theme_dir, &$all_css = [
             $header = preg_replace('#<body\b([^>]*)>#i', '<body$1 <?php body_class(); ?> >', $header, 1);
         }
 
-        // IMPORTANT: your header may contain navbar etc — we KEEP everything after <body>
+        // IMPORTANT: your header may contain navbar etc â€” we KEEP everything after <body>
         // We only make sure wp_head/body_class exist.
         $header_path = trailingslashit($theme_dir) . 'header.php';
         if (file_put_contents($header_path, $header) === false) {
@@ -649,9 +649,9 @@ function ai_tg_build_header_footer_from_zip($zip_path, $theme_dir, &$all_css = [
             }
         }
 
-        // If footer doesn’t close body/html, that’s fine for your use-case,
+        // If footer doesnâ€™t close body/html, thatâ€™s fine for your use-case,
         // but we add them only if missing AND footer looks like a full doc.
-        // (We won’t force-close if your footer is partial.)
+        // (We wonâ€™t force-close if your footer is partial.)
         $footer_path = trailingslashit($theme_dir) . 'footer.php';
         if (file_put_contents($footer_path, $footer) === false) {
             $err = 'Failed writing footer.php into theme.';

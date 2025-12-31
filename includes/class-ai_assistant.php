@@ -104,7 +104,6 @@ class AI_Assistant
 
 
         add_action('wp_ajax_get_pages_list', [$this, 'ai_assistant_handle_get_pages_list']);
-        add_action('admin_enqueue_scripts', [$this, 'ai_assistant_enqueue_pages_list_assets']);
 
         add_action('wp_ajax_upload_theme_image', [$this, 'upload_theme_image']);
         add_action('wp_ajax_save_customizer_code', [$this, 'save_customizer_code']);
@@ -127,8 +126,7 @@ class AI_Assistant
         // create new theme
         add_action('admin_post_ai_tg_upload_zip', [$this, 'handle_theme_zip_upload']);
         add_action('admin_post_ai_tg_create_pages', [$this, 'handle_create_pages']);
-
-
+        add_action('wp_ajax_ai_set_homepage', [$this, 'ai_ajax_set_homepage']);
 
 
 
@@ -1835,27 +1833,6 @@ PHP;
         ));
     }
 
-    function ai_assistant_enqueue_pages_list_assets() {
-        wp_enqueue_script(
-            'pages-list-script',
-            plugin_dir_url(__FILE__) . 'js/pages-list.js',
-            array('jquery'),
-            '1.0.0',
-            true
-        );
-
-        wp_localize_script('pages-list-script', 'pagesListAjax', array(
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('pages_nonce')
-        ));
-
-        wp_enqueue_style(
-            'pages-list-style',
-            plugin_dir_url(__FILE__) . 'css/pages-list.css',
-            array(),
-            '1.0.0'
-        );
-    }
 
 
     public function ai_assistant_create_file() {
@@ -2429,6 +2406,26 @@ PHP;
         return $detected_pages;
     }
 
+
+    function ai_ajax_set_homepage() {
+        check_ajax_referer('ai_set_homepage', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_die('Permission denied');
+        }
+
+        $page_id = intval($_POST['page_id']);
+
+        if ($page_id) {
+            // Set as homepage
+            update_option('page_on_front', $page_id);
+            update_option('show_on_front', 'page');
+
+            wp_send_json_success('Homepage set successfully');
+        } else {
+            wp_send_json_error('Invalid page ID');
+        }
+    }
 
 }
 

@@ -113,6 +113,21 @@ class AI_Assistant_Admin
 
         // === Enqueue base scripts ===
         wp_enqueue_script(
+            $this->plugin_name . '-pages-list-script',
+            plugin_dir_url(__FILE__) . 'js/pages-list.js',
+            array('jquery'),
+            $this->version,
+            false
+        );
+
+        wp_localize_script($this->plugin_name . '-pages-list-script',
+            'pagesListAjax', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('pages_nonce')
+        ));
+
+        // === Enqueue base scripts ===
+        wp_enqueue_script(
             $this->plugin_name . '-theme-switch1',
             plugin_dir_url(__FILE__) . 'js/ai_assistant-theme-switch.js',
             array('jquery'),
@@ -210,6 +225,7 @@ class AI_Assistant_Admin
                 true // ✅ load in footer (important)
             );
         }
+
 
 
 
