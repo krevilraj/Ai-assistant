@@ -52,6 +52,13 @@ register_deactivation_hook( __FILE__, 'deactivate_AI_Assistant' );
 require plugin_dir_path( __FILE__ ) . 'includes/class-ai_assistant.php';
 
 /**
+ * TGMPA – MUST be loaded on plugin load
+ * NOT inside run(), NOT inside admin hooks
+ */
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-tgm-plugin-activation.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/ai-assistant-tgmpa.php';
+
+/**
  * Begins execution of the plugin.
  *
  * Since everything within the plugin is registered via hooks,

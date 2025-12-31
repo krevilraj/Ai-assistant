@@ -9,11 +9,30 @@ function ai_tg_fs_path_without_query($rel) {
 }
 
 function ai_tg_theme_asset_exists($theme_dir, $rel_path) {
+    $original = $rel_path;
+
     $rel_path = ai_tg_fs_path_without_query($rel_path);
-    $rel_path = ltrim($rel_path, '/\\');
+    $rel_path = trim((string)$rel_path);
+    $rel_path = str_replace('\\', '/', $rel_path);
+    $rel_path = preg_replace('~^\./+~', '', $rel_path);
+    $rel_path = ltrim($rel_path, '/');
+
     $abs = trailingslashit($theme_dir) . $rel_path;
-    return file_exists($abs);
+    $exists = file_exists($abs);
+
+    // ✅ log ONLY this file to avoid spam
+    if (stripos($rel_path, 'wellbeiing-bg.png') !== false) {
+        error_log("AI_TG EXISTS CHECK:");
+        error_log("rel(original): " . $original);
+        error_log("rel(normal):   " . $rel_path);
+        error_log("theme_dir:     " . $theme_dir);
+        error_log("abs:           " . $abs);
+        error_log("exists:        " . ($exists ? 'YES' : 'NO'));
+    }
+
+    return $exists;
 }
+
 
 
 function ai_tg_fix_page_links_by_map($html, $map = []) {
@@ -521,51 +540,6 @@ if ( ! function_exists('ai_tg_write_enqueues_into_functions_php') ) {
     }
 }
 
-/**
- * Write template file in theme root: page-{slug}.php
- */
-if ( ! function_exists('ai_tg_write_page_template_in_theme') ) {
-    function ai_tg_write_page_template_in_theme($theme_dir, $slug, $source_filename, $raw_content, $ext) {
-        $slug = sanitize_title($slug);
-        if (!$slug) return new WP_Error('bad_slug', 'Invalid slug.');
-
-        $template_file = 'page-' . $slug . '.php';
-        $template_path = trailingslashit($theme_dir) . $template_file;
-
-        if ($ext === 'html') {
-            $raw_content = ai_tg_extract_body_inner($raw_content);
-        }
-
-        $raw_content = ai_tg_strip_php_header_footer_includes($raw_content);
-
-        // IMPORTANT: Do featured image replacement BEFORE URL fixing
-        $raw_content = ai_tg_replace_slug_image_with_featured($raw_content, $slug);
-
-        $raw_content = ai_tg_fix_page_links_by_map($raw_content, $GLOBALS['ai_tg_page_link_map'] ?? []);
-        $raw_content = ai_tg_correct_html_to_php($raw_content, $theme_dir);
-
-        $php  = "<?php\n";
-        $php .= "/**\n";
-        $php .= " * Template Name: AI - {$slug}\n";
-        $php .= " * Source: {$source_filename}\n";
-        $php .= " */\n\n";
-        $php .= "if ( ! defined('ABSPATH') ) exit;\n";
-        $php .= "get_header();\n\n";
-        $php .= "?>\n";
-        $php .= $raw_content . "\n";
-        $php .= "<?php\n\n";
-        $php .= "get_footer();\n";
-
-        if (file_put_contents($template_path, $php) === false) {
-            return new WP_Error('write_fail', 'Failed to write template file: ' . $template_file);
-        }
-
-        return $template_file;
-    }
-}
-
-
-
 
 function ai_tg_build_header_footer_from_zip($zip_path, $theme_dir, &$all_css = [], &$all_js = [], $page_link_map = [], &$err = '') {
     $err = '';
@@ -723,7 +697,7 @@ if ( ! function_exists('ai_tg_smart_fix_inline_style_urls') ) {
 
         // First, extract and process all style attributes
         $html = preg_replace_callback(
-            '/\bstyle=(["\'])(.*?)\1/i',
+            '/\bstyle=(["\'])(.*?)\1/is',
             function ($m) use ($theme_dir) {
                 $outer_quote = $m[1];
                 $style = $m[2];

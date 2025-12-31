@@ -220,18 +220,29 @@ if (!function_exists('ai_tg_strip_css_js_tags')) {
 function ai_tg_correct_html_to_php($html, $theme_dir = '')
 {
     $html = (string)$html;
+
+    // ✅ multiline-safe inline styles FIRST
+    $html = ai_tg_smart_fix_inline_style_urls($html, $theme_dir);
+
+    // links
     $html = ai_tg_fix_home_links($html);
+
+    // img src
     $html = ai_tg_fix_img_src($html, $theme_dir);
 
     // KEEP THIS - it works
-    $html = preg_replace('/<source\b([^>]*?)src=(["\'])([^"\']+)\2([^>]*)\/?>/i',
+    $html = preg_replace(
+        '/<source\b([^>]*?)src=(["\'])([^"\']+)\2([^>]*)\/?>/i',
         '<source$1src="<?php echo esc_url( get_stylesheet_directory_uri() ); ?>/$3"$4>',
-        $html);
+        $html
+    );
 
-    $html = ai_tg_fix_inline_style_urls($html, $theme_dir);
+    // strip css/js
     $html = ai_tg_strip_css_js_tags($html);
+
     return $html;
 }
+
 
 if (!function_exists('ai_tg_collect_assets_from_html')) {
     function ai_tg_collect_assets_from_html($html)
