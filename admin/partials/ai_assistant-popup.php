@@ -73,177 +73,189 @@
 
         <div id="apply_acf" class="custom-tab-content">
             <h3>Apply Custom Fields</h3>
-            <div class="acf-field-container">
-                <div id="field-groups-accordion">
-                    <?php
-                    // Clear ACF Cache to fetch the latest fields
-                    wp_cache_delete('acf_get_field_groups');
 
-                    // Fetch all ACF field groups
-                    $field_groups = acf_get_field_groups();
+            <?php if ( ! function_exists('acf_get_field_groups') || ! function_exists('acf_get_fields') ) : ?>
 
-                    // Loop through each field group
-                    foreach ($field_groups as $group) {
-                        $group_key = $group['key'];
-                        $group_title = $group['title'];
+                <div class="notice notice-error" style="margin: 10px 0;">
+                    <p>
+                        <strong>Advanced Custom Fields (ACF) plugin is required.</strong><br>
+                        This feature depends on ACF. Please install and activate ACF to use “Apply ACF”.
+                    </p>
+                </div>
 
-                        // Get the location (example: first location rule)
-                        $location = !empty($group['location'][0][0]['param']) ? $group['location'][0][0]['param'] : 'N/A';
+            <?php else : ?>
 
-                        // Fetch fields for this group
-                        $fields = acf_get_fields($group_key);
+                <div class="acf-field-container">
+                    <div id="field-groups-accordion">
+                        <?php
+                        // Clear ACF Cache to fetch the latest fields
+                        wp_cache_delete('acf_get_field_groups');
 
-                        echo '<div class="accordion-item">';
-                        echo '<div class="accordion-header">';
-                        echo '<span>' . esc_html($group_title) . '</span>';
-                        echo '<span>Location: ' . esc_html($location) . '</span>';
-                        echo '</div>';
-                        echo '<div class="accordion-content">';
+                        // Fetch all ACF field groups
+                        $field_groups = acf_get_field_groups();
 
-                        if (!empty($fields)) {
-                            display_acf_fields_popup_with_tabs($fields);
-                        } else {
-                            echo '<p>No fields found for this group.</p>';
-                        }
+                        // Loop through each field group
+                        foreach ($field_groups as $group) {
+                            $group_key   = $group['key'];
+                            $group_title = $group['title'];
 
-                        echo '</div>';
-                        echo '</div>';
-                    }
+                            // Get the location (example: first location rule)
+                            $location = !empty($group['location'][0][0]['param']) ? $group['location'][0][0]['param'] : 'N/A';
 
-                    /**
-                     * EXACT COPY from your working code
-                     */
+                            // Fetch fields for this group
+                            $fields = acf_get_fields($group_key);
 
-                    function display_acf_fields_popup_with_tabs($fields)
-                    {
-                        if (empty($fields) || !is_array($fields)) {
-                            echo '<p>No fields found.</p>';
-                            return;
-                        }
+                            echo '<div class="accordion-item">';
+                            echo '<div class="accordion-header">';
+                            echo '<span>' . esc_html($group_title) . '</span>';
+                            echo '<span>Location: ' . esc_html($location) . '</span>';
+                            echo '</div>';
+                            echo '<div class="accordion-content">';
 
-                        // Collect fields into tab buckets
-                        $tabs = [];
-                        $currentTabKey = 'default';
-
-                        $tabs[$currentTabKey] = [
-                            'label'  => 'Fields',
-                            'fields' => []
-                        ];
-
-                        foreach ($fields as $field) {
-                            $type  = $field['type'] ?? '';
-                            $label = $field['label'] ?? '';
-                            $name  = $field['name'] ?? '';
-
-                            $slug = strtolower(str_replace(" ", "_", preg_replace("/[^a-zA-Z0-9_]/", "", (string)$name)));
-
-                            // ACF Tab => start a new UI tab
-                            if ($type === 'tab') {
-                                $currentTabKey = $slug ?: ('tab_' . wp_generate_password(6, false, false));
-                                if (!isset($tabs[$currentTabKey])) {
-                                    $tabs[$currentTabKey] = [
-                                        'label'  => $label ?: 'Tab',
-                                        'fields' => []
-                                    ];
-                                }
-                                continue;
-                            }
-
-                            $tabs[$currentTabKey]['fields'][] = $field;
-                        }
-
-                        // If there are no real tabs (only default), just render normal list
-                        $hasRealTabs = (count($tabs) > 1);
-
-                        if (!$hasRealTabs) {
-                            display_acf_fields_popup($tabs['default']['fields']);
-                            return;
-                        }
-
-                        // Render tabs UI
-                        echo '<div class="acf-ui-tabs">';
-
-                        // Tab buttons
-                        echo '<div class="acf-ui-tabs-nav">';
-                        $i = 0;
-                        foreach ($tabs as $key => $tab) {
-                            // skip empty default tab button if it's empty
-                            if ($key === 'default' && empty($tab['fields'])) continue;
-
-                            $active = ($i === 0) ? ' is-active' : '';
-                            echo '<button type="button" class="acf-ui-tab-btn' . esc_attr($active) . '" data-tab="' . esc_attr($key) . '">'
-                                . esc_html($tab['label']) .
-                                '</button>';
-                            $i++;
-                        }
-                        echo '</div>';
-
-                        // Panels
-                        echo '<div class="acf-ui-tabs-panels">';
-                        $i = 0;
-                        foreach ($tabs as $key => $tab) {
-                            if ($key === 'default' && empty($tab['fields'])) continue;
-
-                            $active = ($i === 0) ? ' is-active' : '';
-                            echo '<div class="acf-ui-tab-panel' . esc_attr($active) . '" data-panel="' . esc_attr($key) . '">';
-
-                            if (!empty($tab['fields'])) {
-                                display_acf_fields_popup($tab['fields']); // ✅ YOUR SAME BUTTONS
+                            if (!empty($fields)) {
+                                display_acf_fields_popup_with_tabs($fields);
                             } else {
-                                echo '<p>No fields in this tab.</p>';
+                                echo '<p>No fields found for this group.</p>';
                             }
 
                             echo '</div>';
-                            $i++;
+                            echo '</div>';
                         }
-                        echo '</div>';
 
-                        echo '</div>';
-                    }
-
-                    /**
-                     * KEEP your existing renderer EXACTLY (same classes/data attrs)
-                     * Just paste your original function here if it isn't already.
-                     */
-                    function display_acf_fields_popup($fields, $is_repeater = false, $repeater_parent = '')
-                    {
-                        foreach ($fields as $field) {
-                            $field_label = esc_html($field['label']);
-                            $field_name  = esc_attr($field['name']);
-                            $field_type  = esc_attr($field['type']);
-
-                            $field_slug = strtolower(str_replace(" ", "_", preg_replace("/[^a-zA-Z0-9_]/", "", $field_name)));
-
-                            // keep tab inside repeater as a divider (not UI tab)
-                            if ($field_type === 'tab') {
-                                echo "<div class='acf-subtab-divider'>{$field_label}</div>";
-                                continue;
+                        /**
+                         * EXACT COPY from your working code
+                         */
+                        function display_acf_fields_popup_with_tabs($fields)
+                        {
+                            if (empty($fields) || !is_array($fields)) {
+                                echo '<p>No fields found.</p>';
+                                return;
                             }
 
-                            if ($field_type === 'repeater') {
-                                echo "<fieldset class='repeater-field'>";
-                                echo "<legend>{$field_label}</legend>";
-                                echo "<button type='button' class='field-button repeater-btn' data-name='{$field_slug}' data-type='repeater'>{$field_label}</button>";
+                            // Collect fields into tab buckets
+                            $tabs = [];
+                            $currentTabKey = 'default';
 
-                                if (!empty($field['sub_fields'])) {
-                                    echo "<div class='repeater-subfields' style='margin-top:10px;'>";
-                                    display_acf_fields_popup($field['sub_fields'], true, $field_name);
-                                    echo "</div>";
+                            $tabs[$currentTabKey] = [
+                                'label'  => 'Fields',
+                                'fields' => []
+                            ];
+
+                            foreach ($fields as $field) {
+                                $type  = $field['type'] ?? '';
+                                $label = $field['label'] ?? '';
+                                $name  = $field['name'] ?? '';
+
+                                $slug = strtolower(str_replace(" ", "_", preg_replace("/[^a-zA-Z0-9_]/", "", (string)$name)));
+
+                                // ACF Tab => start a new UI tab
+                                if ($type === 'tab') {
+                                    $currentTabKey = $slug ?: ('tab_' . wp_generate_password(6, false, false));
+                                    if (!isset($tabs[$currentTabKey])) {
+                                        $tabs[$currentTabKey] = [
+                                            'label'  => $label ?: 'Tab',
+                                            'fields' => []
+                                        ];
+                                    }
+                                    continue;
                                 }
-                                echo "</fieldset>";
-                            } else {
-                                $button_class = $is_repeater ? "field-button subfield-btn" : "field-button";
-                                $data_type = $is_repeater ? "subfield" : "normal";
-                                echo "<button type='button' class='{$button_class}' data-name='{$field_slug}' data-parent='{$repeater_parent}' data-type='{$data_type}'>{$field_label}</button>";
+
+                                $tabs[$currentTabKey]['fields'][] = $field;
+                            }
+
+                            // If there are no real tabs (only default), just render normal list
+                            $hasRealTabs = (count($tabs) > 1);
+
+                            if (!$hasRealTabs) {
+                                display_acf_fields_popup($tabs['default']['fields']);
+                                return;
+                            }
+
+                            // Render tabs UI
+                            echo '<div class="acf-ui-tabs">';
+
+                            // Tab buttons
+                            echo '<div class="acf-ui-tabs-nav">';
+                            $i = 0;
+                            foreach ($tabs as $key => $tab) {
+                                // skip empty default tab button if it's empty
+                                if ($key === 'default' && empty($tab['fields'])) continue;
+
+                                $active = ($i === 0) ? ' is-active' : '';
+                                echo '<button type="button" class="acf-ui-tab-btn' . esc_attr($active) . '" data-tab="' . esc_attr($key) . '">'
+                                    . esc_html($tab['label']) .
+                                    '</button>';
+                                $i++;
+                            }
+                            echo '</div>';
+
+                            // Panels
+                            echo '<div class="acf-ui-tabs-panels">';
+                            $i = 0;
+                            foreach ($tabs as $key => $tab) {
+                                if ($key === 'default' && empty($tab['fields'])) continue;
+
+                                $active = ($i === 0) ? ' is-active' : '';
+                                echo '<div class="acf-ui-tab-panel' . esc_attr($active) . '" data-panel="' . esc_attr($key) . '">';
+
+                                if (!empty($tab['fields'])) {
+                                    display_acf_fields_popup($tab['fields']); // ✅ YOUR SAME BUTTONS
+                                } else {
+                                    echo '<p>No fields in this tab.</p>';
+                                }
+
+                                echo '</div>';
+                                $i++;
+                            }
+                            echo '</div>';
+
+                            echo '</div>';
+                        }
+
+                        /**
+                         * KEEP your existing renderer EXACTLY (same classes/data attrs)
+                         * Just paste your original function here if it isn't already.
+                         */
+                        function display_acf_fields_popup($fields, $is_repeater = false, $repeater_parent = '')
+                        {
+                            foreach ($fields as $field) {
+                                $field_label = esc_html($field['label']);
+                                $field_name  = esc_attr($field['name']);
+                                $field_type  = esc_attr($field['type']);
+
+                                $field_slug = strtolower(str_replace(" ", "_", preg_replace("/[^a-zA-Z0-9_]/", "", $field_name)));
+
+                                // keep tab inside repeater as a divider (not UI tab)
+                                if ($field_type === 'tab') {
+                                    echo "<div class='acf-subtab-divider'>{$field_label}</div>";
+                                    continue;
+                                }
+
+                                if ($field_type === 'repeater') {
+                                    echo "<fieldset class='repeater-field'>";
+                                    echo "<legend>{$field_label}</legend>";
+                                    echo "<button type='button' class='field-button repeater-btn' data-name='{$field_slug}' data-type='repeater'>{$field_label}</button>";
+
+                                    if (!empty($field['sub_fields'])) {
+                                        echo "<div class='repeater-subfields' style='margin-top:10px;'>";
+                                        display_acf_fields_popup($field['sub_fields'], true, $field_name);
+                                        echo "</div>";
+                                    }
+                                    echo "</fieldset>";
+                                } else {
+                                    $button_class = $is_repeater ? "field-button subfield-btn" : "field-button";
+                                    $data_type = $is_repeater ? "subfield" : "normal";
+                                    echo "<button type='button' class='{$button_class}' data-name='{$field_slug}' data-parent='{$repeater_parent}' data-type='{$data_type}'>{$field_label}</button>";
+                                }
                             }
                         }
-                    }
-
-                    ?>
-
+                        ?>
+                    </div>
                 </div>
-            </div>
+
+            <?php endif; ?>
         </div>
+
 
 
         <div id="additional_settings" class="custom-tab-content">

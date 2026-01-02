@@ -9,12 +9,6 @@ function ai_assistant_register_recommended_plugins() {
     $plugins = [
 
         [
-            'name'     => 'Advanced Custom Fields (ACF)',
-            'slug'     => 'advanced-custom-fields',
-            'required' => false,
-        ],
-
-        [
             'name'     => 'Contact Form 7',
             'slug'     => 'contact-form-7',
             'required' => false,
@@ -27,16 +21,15 @@ function ai_assistant_register_recommended_plugins() {
         ],
 
         [
-            'name'     => 'ACF Repeater Field',
-            'slug'     => 'acf-repeater',
-            'required' => false,
-        ],
-
-        [
             'name'     => 'Custom Post Type UI',
             'slug'     => 'custom-post-type-ui',
             'required' => false,
         ],
+        [
+            'name'     => 'Post Duplicator',
+            'slug'     => 'post-duplicator',
+            'required' => false,
+        ]
     ];
 
     $config = [

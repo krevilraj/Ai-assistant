@@ -22,7 +22,7 @@ jQuery(document).ready(function ($) {
         if (typeof cssSnippetHandlers !== "undefined") {
             Object.assign(snippetHandlers, cssSnippetHandlers);
         }
-        console.log("✅ All snippet handlers loaded successfully!");
+
     }
 
     // ✅ Load all snippet files sequentially and merge handlers
@@ -106,10 +106,6 @@ function insertSnippet(code, offsetOrCallback, callback) {
                     let cursorLine = cursor.line + lines.length - 1;
                     let cursorCh = lines[lines.length - 1].length;
 
-                    console.log("cursorIndex: "+cursorIndex);
-                    console.log(lines);
-                    console.log("2 cursorLine: "+cursorLine);
-                    console.log("3 cursorCh: "+cursorCh);
 
                     editor.setCursor({ line: cursorLine, ch: cursorCh });
                 } else if (typeof offsetOrCallback === "number") {

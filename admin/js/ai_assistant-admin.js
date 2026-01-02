@@ -139,17 +139,26 @@ jQuery(document).ready(function ($) {
 
 
 jQuery(document).ready(function ($) {
-    let originalContent = $("#theme-file-editor").val().trim();
 
-    // Detect changes in the textarea
-    $("#theme-file-editor").on("input", function () {
-        let currentContent = $(this).val().trim();
-        if (currentContent !== originalContent) {
-            $("#file_save").removeClass("button-disabled");
-        } else {
-            $("#file_save").addClass("button-disabled");
-        }
-    });
+    const $editor = $("#theme-file-editor");
+    const $saveBtn = $("#file_save");
+
+    if ($editor.length) {
+        const originalContent = $editor.val().trim();
+
+        // Detect changes in the textarea
+        $editor.on("input", function () {
+            const currentContent = $(this).val().trim();
+
+            if (currentContent !== originalContent) {
+                $saveBtn.removeClass("button-disabled");
+            } else {
+                $saveBtn.addClass("button-disabled");
+            }
+        });
+    }
+
+
 
     $("#file_save").on("click", function () {
         var filePath = new URLSearchParams(window.location.search).get("file");
@@ -482,10 +491,6 @@ jQuery(document).ready(function($) {
                 if (response.success) {
                     $pagesList.html(response.data.html);
 
-                    // Update count if you want to show it
-                    if (response.data.count !== undefined) {
-                        console.log('Pages found: ' + response.data.count);
-                    }
                 } else {
                     $pagesList.html('<div class="error">Error loading pages</div>');
                 }
