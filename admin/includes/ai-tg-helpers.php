@@ -318,7 +318,7 @@ if ( ! function_exists('ai_tg_get_target_theme_dir') ) {
         $slug = isset($new_theme['slug']) ? sanitize_title($new_theme['slug']) : '';
         $text_domain = isset($new_theme['text_domain']) ? sanitize_title($new_theme['text_domain']) : '';
 
-        if (!$name) $name = 'AI Generated Theme';
+        if (!$name) $name = 'Theme Name';
         if (!$slug) $slug = sanitize_title($name);
         if (!$text_domain) $text_domain = $slug;
 
@@ -350,7 +350,7 @@ Text Domain: {$text_domain}
         // Minimal index.php
         $index_php = trailingslashit($theme_dir) . 'index.php';
         if (!file_exists($index_php)) {
-            file_put_contents($index_php, "<?php\nget_header();\n?>\n<div style=\"padding:20px;\">AI Generated Theme</div>\n<?php\nget_footer();\n");
+            file_put_contents($index_php, "<?php\nget_header();\n?>\n<div style=\"padding:20px;\">Index page</div>\n<?php\nget_footer();\n");
         }
 
         // Minimal header/footer placeholders (will be overwritten if ZIP contains them)

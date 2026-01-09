@@ -380,7 +380,7 @@ if (!function_exists('ai_tg_write_page_template_in_theme')) {
 
         $php = "<?php\n";
         $php .= "/**\n";
-        $php .= " * Template Name: AI - {$slug}\n";
+        $php .= " * Template Name: {$slug}\n";
         $php .= " * Source: {$source_filename}\n";
         $php .= " */\n\n";
         $php .= "if ( ! defined('ABSPATH') ) exit;\n";
