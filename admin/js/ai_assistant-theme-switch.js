@@ -64,6 +64,87 @@ jQuery(document).ready(function ($) {
             $("#file_save").removeClass("button-disabled").text("Save");
         });
 
+        // ✅ Track selection globally (Fix missing last character issue)
+        editor.on("beforeSelectionChange", function (instance, obj) {
+            let selections = obj.ranges;
+            if (selections.length > 0) {
+                window.selectionStart = selections[0].anchor.ch;
+                window.selectionEnd = selections[0].head.ch;
+
+                // ✅ Delay retrieving selected text to ensure full selection
+                setTimeout(() => {
+                    window.selectedText = editor.getSelection();
+                }, 10);
+            }
+        });
+
+        // ✅ Function to insert text at the cursor position
+        window.replaceSelectedTextInsideEditor = function (newText, message) {
+            if (!editor) {
+                console.warn("🚨 CodeMirror editor not detected!");
+                return;
+            }
+
+            if (!window.selectedText) {
+                let cursor = editor.getCursor();
+                editor.replaceRange(newText, cursor);
+                editor.setCursor({line: cursor.line, ch: cursor.ch + newText.length});
+                showAlert(message || "Code inserted at cursor position!", "success");
+            } else {
+                editor.replaceSelection(newText);
+                editor.focus();
+            }
+        };
+
+        // ✅ Function to replace selected text
+        window.replaceSelectedTextInEditor = function (newText, message) {
+            if (!window.selectedText) {
+                let tempInput = $("<input>");
+                $("body").append(tempInput);
+                tempInput.val(newText).select();
+                document.execCommand("copy");
+                tempInput.remove();
+                showAlert(message, "success");
+            } else {
+                editor.replaceSelection(newText);
+                editor.focus();
+            }
+        };
+
+        $("#go-to-line-btn").on("click", function () {
+            var lineNumber = parseInt($("#line-number-input").val(), 10);
+
+            if (!isNaN(lineNumber) && lineNumber > 0) {
+                editor.setCursor({line: lineNumber - 1, ch: 0}); // ✅ Move cursor (0-based index)
+                editor.focus(); // ✅ Focus the editor
+            } else {
+                alert("❌ Enter a valid line number!");
+            }
+        });
+
+        // ✅ Set the checkbox state based on the saved theme
+        $("#theme-toggle-checkbox").prop("checked", savedTheme === "dracula");
+
+        // ✅ Theme Toggle Switch Logic
+        $("#theme-toggle-checkbox").on("change", function () {
+            let newTheme = $(this).is(":checked") ? "dracula" : "default";
+            editor.setOption("theme", newTheme);
+            if (newTheme === "dracula") {
+                $("body").addClass("ai-dark-theme");
+            } else {
+                $("body").removeClass("ai-dark-theme");
+            }
+
+            // ✅ Save theme preference via AJAX
+            $.post(ajax_object.ajax_url, {
+                action: "save_codemirror_theme",
+                theme: newTheme
+            }, function (response) {
+                if (!response.success) {
+                    console.log("Error saving theme");
+                }
+            });
+        });
         window.aiAssistantEditor = editor;
     };
 

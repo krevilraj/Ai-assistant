@@ -301,7 +301,7 @@
     border-bottom: 2px solid #ddd;
 }
 
-.acf-tab {
+#create-field .acf-tab {
     background: #f4f4f4;
     border: none;
     padding: 10px 20px;
@@ -309,7 +309,7 @@
     border-radius: 4px 4px 0 0;
 }
 
-.acf-tab.active {
+#create-field .acf-tab.active {
     background: #0073aa;
     border-bottom: 2px solid #ffffff;
     color: #fff;
