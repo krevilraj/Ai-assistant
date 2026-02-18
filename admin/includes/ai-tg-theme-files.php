@@ -465,7 +465,7 @@ if ( ! function_exists('ai_tg_write_enqueues_into_functions_php') ) {
             $href = trim((string)$href);
             if ($href === '') continue;
 
-            $handle = "ai-tg-style-{$i}";
+            $handle = $text_domain."-style-{$i}";
 
             // Check if it's an external URL (http://, https://, or //)
             if (preg_match('~^(?:https?:)?//~i', $href)) {
@@ -493,7 +493,7 @@ if ( ! function_exists('ai_tg_write_enqueues_into_functions_php') ) {
             $src = trim((string)$src);
             if ($src === '') continue;
 
-            $handle = "ai-tg-script-{$j}";
+            $handle = $text_domain."-script-{$j}";
 
             // Check if it's an external URL (http://, https://, or //)
             if (preg_match('~^(?:https?:)?//~i', $src)) {
