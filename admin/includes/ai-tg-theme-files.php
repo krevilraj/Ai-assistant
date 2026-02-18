@@ -519,6 +519,8 @@ if ( ! function_exists('ai_tg_write_enqueues_into_functions_php') ) {
         $lines[] = "// Remove <p> and <br/> from Contact Form 7";
         $lines[] = "add_filter('wpcf7_autop_or_not', '__return_false');";
         $lines[] = "";
+        $lines[] = "add_theme_support( 'title-tag' );";
+        $lines[] = "";
 
         $lines[] = $block_end;
 

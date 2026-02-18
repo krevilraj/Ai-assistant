@@ -12,4 +12,5 @@ X 11. change /./ to /assets
 12. upload featured image for pages
 X 13. easy for css developer
 X 14. view homepage site in different tab
+15. nav header not correct
 
