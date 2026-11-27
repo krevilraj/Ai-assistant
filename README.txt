@@ -1,114 +1,152 @@
-=== AI Assistant ===
-Contributors: (this should be a list of wordpress.org userid's)
-Donate link: http://example.com/
-Tags: comments, spam
-Requires at least: 3.0.1
-Tested up to: 3.4
-Stable tag: 4.3
-License: GPLv2 or later
-License URI: http://www.gnu.org/licenses/gpl-2.0.html
+# AI Assistant for WordPress Developers
 
-Here is a short description of the plugin.  This should be no more than 150 characters.  No markup here.
+**Turn AI-generated code into real WordPress themes, templates and features, right from the WordPress dashboard.**
 
-== Description ==
+AI Assistant is a developer-focused WordPress plugin. You generate code or HTML with the AI tool you already use (ChatGPT, Claude, Copilot…), and AI Assistant gives you the editor, snippet library and one-click automation to apply it correctly inside WordPress: no FTP, no file manager, no copy-paste into the wrong file.
 
-This is the long description.  No limit, and you can use Markdown (as well as in the following sections).
+> **No AI API calls.** The plugin does not connect to OpenAI or any other AI service. You choose which AI tools you use and what code you apply.
 
-For backwards compatibility, if this section is missing, the full length of the short description will be used, and
-Markdown parsed.
+[Project page & screenshots](https://rajkumarsharma.com.np/project/ai-assistant-for-wordpress-developer/) · [Author](https://rajkumarsharma.com.np/)
 
-A few notes about the sections above:
+---
 
-*   "Contributors" is a comma separated list of wp.org/wp-plugins.org usernames
-*   "Tags" is a comma separated list of tags that apply to the plugin
-*   "Requires at least" is the lowest version that the plugin will work on
-*   "Tested up to" is the highest version that you've *successfully used to test the plugin*. Note that it might work on
-higher versions... this is just the highest one you've verified.
-*   Stable tag should indicate the Subversion "tag" of the latest stable version, or "trunk," if you use `/trunk/` for
-stable.
+## Who is it for?
 
-    Note that the `readme.txt` of the stable tag is the one that is considered the defining one for the plugin, so
-if the `/trunk/readme.txt` file says that the stable tag is `4.3`, then it is `/tags/4.3/readme.txt` that'll be used
-for displaying information about the plugin.  In this situation, the only thing considered from the trunk `readme.txt`
-is the stable tag pointer.  Thus, if you develop in trunk, you can update the trunk `readme.txt` to reflect changes in
-your in-development version, without having that information incorrectly disclosed about the current stable version
-that lacks those changes -- as long as the trunk's `readme.txt` points to the correct stable tag.
+- **WordPress developers** using AI to speed up custom theme work
+- **Agencies** that want a safer, repeatable way to apply AI-generated code
+- **Freelancers** who build custom themes and need automation around templates, CPTs and menus
+- **Technical power users** who want more control over theme files
 
-    If no stable tag is provided, it is assumed that trunk is stable, but you should specify "trunk" if that's where
-you put the stable version, in order to eliminate any doubt.
+If you already ask AI to "write my `header.php`" or "create a CPT for Portfolio", this plugin is the workflow for applying that code inside WordPress.
 
-== Installation ==
+---
 
-This section describes how to install the plugin and get it working.
+## Features
 
-e.g.
+### 1. Smart theme editor (CodeMirror)
+- Syntax highlighting, line numbers and code folding
+- File browser for the active theme, with one-click load and save
+- Text search inside files
+- Light and dark editor themes
 
-1. Upload `ai_assistant.php` to the `/wp-content/plugins/` directory
-1. Activate the plugin through the 'Plugins' menu in WordPress
-1. Place `<?php do_action('plugin_name_hook'); ?>` in your templates
+### 2. Snippet library: WordPress, CSS and JavaScript
+- **WordPress PHP:** `the_title()`, `the_permalink()`, the Loop, `WP_Query`, menus, logo, ACF field calls and more
+- **CSS:** utility blocks and layout helpers
+- **JavaScript:** common patterns and helpers
 
-== Frequently Asked Questions ==
+Click a snippet and it is inserted at the cursor, ready to customise.
 
-= A question that someone might have =
+### 3. Floating "Spark" button and assistant popup
+A floating button and an admin-bar item open a tabbed popup (Tasks, Contact Form 7, ACF, Customizer, Miscellaneous) where you can:
+- Create a new theme from a clean base template
+- Create page templates and link them to new pages
+- **Correct header, footer or page templates** by pasting static HTML from your AI tool
+- Detect static menus and convert them into WordPress menus
 
-An answer to that question.
+### 4. One-click developer tasks
+- Create a theme from a starter structure
+- Create **custom post types** with labels, supports, archives and template stubs
+- Create menus and assign them to theme locations
+- Create and remove **user roles** based on existing roles
+- Create template parts in the theme
+- Set a page as the homepage
+- Reset permalinks and flush rewrite rules
+- Toggle `WP_DEBUG` in `wp-config.php`
+- Change the site admin email
 
-= What about foo bar? =
+### 5. Customizer builder
+- Add Customizer sections and settings without hand-writing the API code
+- Choose from the available field types and set the text domain
+- Generate the Customizer code into the theme
 
-Answer to foo bar dilemma.
+### 6. Contact Form 7 helpers
+- Toolbar of CF7 field tags (text, email, URL, number, date, dropdown, checkbox, radio, file, submit…)
+- Convert form tags into mail-template placeholders
+- Quick workflow for translating default form messages for multilingual sites
 
-== Screenshots ==
+### 7. Advanced Custom Fields (ACF) helpers
+- Fetch the custom fields used on a given URL
+- Work with ACF JSON field-group definitions
+- Save ACF JSON and location rules where WordPress loads them automatically
+- Create and apply custom fields to templates
 
-1. This screen shot description corresponds to screenshot-1.(png|jpg|jpeg|gif). Note that the screenshot is taken from
-the /assets directory or the directory that contains the stable readme.txt (tags or trunk). Screenshots in the /assets
-directory take precedence. For example, `/assets/screenshot-1.png` would win over `/tags/4.3/screenshot-1.png`
-(or jpg, jpeg, gif).
-2. This is the second screen shot
+### 8. Live CSS sync (optional)
+A REST endpoint, protected by an API key, that lets an external live-CSS editor push stylesheet changes to the site:
 
-== Changelog ==
+| Method | Endpoint |
+|---|---|
+| `GET` | `/wp-json/live-css-sync/v1/test` |
+| `POST` | `/wp-json/live-css-sync/v1/update` |
 
-= 1.0 =
-* A change since the previous version.
-* Another change.
+The key is stored in the `live_css_sync_api_key` option.
 
-= 0.5 =
-* List versions from most recent at top to oldest at bottom.
+---
 
-== Upgrade Notice ==
+## Typical workflow
 
-= 1.0 =
-Upgrade notices describe the reason a user should upgrade.  No more than 300 characters.
+1. **Ask your AI tool for code or HTML.** For example: "Create header markup for my site", "Generate a CPT for Projects" or "Give me an ACF field group JSON for client details".
+2. **Open AI Assistant in WordPress.** Open `header.php`, `functions.php` or any template in the editor, or open the popup for tasks like *Create CPT*, *Correct Header* or *Create Theme*.
+3. **Paste and apply.** Paste HTML into *Correct Header/Footer/Page*, fill in the CPT form, or paste ACF JSON into the ACF helper and save.
+4. **Review and refine.** Use the snippet library and editor to add loops, menus and ACF field calls.
 
-= 0.5 =
-This version fixes a security related bug.  Upgrade immediately.
+The result is AI-generated code turned into working WordPress features, with far less manual editing.
 
-== Arbitrary section ==
+---
 
-You may provide arbitrary sections, in the same format as the ones above.  This may be of use for extremely complicated
-plugins where more information needs to be conveyed that doesn't fit into the categories of "description" or
-"installation."  Arbitrary sections will be shown below the built-in sections outlined above.
+## Installation
 
-== A brief Markdown Example ==
+1. Download or clone this repository into `wp-content/plugins/`:
+   ```bash
+   cd wp-content/plugins
+   git clone https://github.com/krevilraj/Ai-assistant.git ai-assistant
+   ```
+2. Activate **AI Assistant** in **Plugins** in the WordPress admin.
+3. Open the assistant from the floating Spark button or the admin bar.
 
-Ordered list:
+### Recommended plugins
+On activation, the plugin suggests these (via TGM Plugin Activation):
+- Contact Form 7
+- Classic Editor
+- Custom Post Type UI
+- Post Duplicator
 
-1. Some feature
-1. Another feature
-1. Something else about the plugin
+ACF and the ACF Repeater field are bundled in `plugin_files/` for the ACF helpers.
 
-Unordered list:
+---
 
-* something
-* something else
-* third thing
+## Project structure
 
-Here's a link to [WordPress](http://wordpress.org/ "Your favorite software") and one to [Markdown's Syntax Documentation][markdown syntax].
-Titles are optional, naturally.
+```
+ai_assistant.php        Plugin bootstrap
+admin/                  Admin UI: editor, popup, partials, snippets, CSS/JS
+  pages/                Theme editor and create-theme screens
+  partials/             Popup tabs (tasks, ACF, CF7, customizer, misc)
+  js/snippet/           WordPress PHP, CSS and JS snippet libraries
+includes/               Core classes: loader, i18n, activation, live CSS REST API
+theme_template/         Base theme used by "Create theme"
+plugin_files/           Bundled ACF and ACF Repeater
+languages/              Translation template (.pot)
+```
 
-[markdown syntax]: http://daringfireball.net/projects/markdown/syntax
-            "Markdown is what the parser uses to process much of the readme file"
+---
 
-Markdown uses email style notation for blockquotes and I've been told:
-> Asterisks for *emphasis*. Double it up  for **strong**.
+## Important notes
 
-`<?php code(); // goes in backticks ?>`
+The plugin **edits theme files directly**, so:
+- Use a **child theme** where possible
+- Keep **backups or version control** (Git)
+- Test on a **staging site** before production
+- Use it only on sites where you are an administrator
+
+---
+
+## License
+
+GPL-2.0-or-later. See [LICENSE.txt](LICENSE.txt).
+
+## Author
+
+**Rajkumar Sharma**, Senior WordPress / PHP Developer
+[rajkumarsharma.com.np](https://rajkumarsharma.com.np/) · [krevilraj@gmail.com](mailto:krevilraj@gmail.com)
+
+Also by the author: [Krevil User Registration & Login](https://wordpress.org/plugins/krevil-user-registration-login/) on WordPress.org.
